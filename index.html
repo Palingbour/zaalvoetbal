@@ -541,8 +541,8 @@ const matchCard = m => {
         `<span class="scorer-name">${pName(s.playerId)}</span>${s.goals>1?` (${s.goals}×)`:''}`
       ).join('&ensp;·&ensp;')}</div>` : '';
   const actions = S.isAdmin ? `<div class="match-actions">
-    <button class="btn btn-ghost btn-sm" data-editMatch="${m.id}">Bewerken</button>
-    <button class="btn btn-danger btn-sm" data-deleteMatch="${m.id}">Verwijderen</button>
+    <button class="btn btn-ghost btn-sm" data-edit-match="${m.id}">Bewerken</button>
+    <button class="btn btn-danger btn-sm" data-delete-match="${m.id}">Verwijderen</button>
   </div>` : '';
   return `
   <div class="card">
@@ -644,8 +644,8 @@ const adminPlayers = () => `
           <tr>
             <td class="p-name">${p.name}</td>
             <td><div style="display:flex;gap:7px;padding:2px 0">
-              <button class="btn btn-ghost btn-sm" data-editPlayer="${p.id}">Bewerken</button>
-              <button class="btn btn-danger btn-sm" data-deletePlayer="${p.id}">✕</button>
+              <button class="btn btn-ghost btn-sm" data-edit-player="${p.id}">Bewerken</button>
+              <button class="btn btn-danger btn-sm" data-delete-player="${p.id}">✕</button>
             </div></td>
           </tr>`).join('')}
         </tbody></table></div>`}`;
@@ -801,19 +801,19 @@ const wire = () => {
   eid('addMatchBtn')?.addEventListener('click', ()=>{ S.modal='match'; S.editingMatch=null; render(); });
   eid('addPlayerBtn')?.addEventListener('click', ()=>{ S.modal='player'; S.editingPlayer=null; render(); });
 
-  q('[data-editMatch]', b => b.addEventListener('click', ()=>{
+  q('[data-edit-match]', b => b.addEventListener('click', ()=>{
     S.editingMatch = cache.matches.find(m=>m.id===b.dataset.editMatch);
     S.modal = 'editMatch'; render();
   }));
-  q('[data-deleteMatch]', b => b.addEventListener('click', ()=>{
+  q('[data-delete-match]', b => b.addEventListener('click', ()=>{
     if (!confirm('Wedstrijd verwijderen?')) return;
     doAction(() => dbDeleteMatch(b.dataset.deleteMatch), 'Wedstrijd verwijderd');
   }));
-  q('[data-editPlayer]', b => b.addEventListener('click', ()=>{
+  q('[data-edit-player]', b => b.addEventListener('click', ()=>{
     S.editingPlayer = cache.players.find(p=>p.id===b.dataset.editPlayer);
     S.modal = 'player'; render();
   }));
-  q('[data-deletePlayer]', b => b.addEventListener('click', ()=>{
+  q('[data-delete-player]', b => b.addEventListener('click', ()=>{
     if (!confirm('Speler verwijderen?')) return;
     doAction(() => dbDeletePlayer(b.dataset.deletePlayer), 'Speler verwijderd');
   }));
