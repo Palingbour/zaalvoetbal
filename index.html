@@ -145,7 +145,7 @@
     font-size: 12px; font-weight: 500; color: var(--text-soft); padding: 3px 12px;
     display: inline-block; margin-bottom: 16px;
   }
-  .match-body { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 14px; align-items: center; }
+  .match-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
   .match-team { background: var(--navy2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
   .team-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
   .team-label.a { color: var(--gold); }
@@ -347,7 +347,7 @@ const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── IN-MEMORY CACHE ──────────────────────────────────
-let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00 };
+let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00, seasonCost: 0, seasonPaid: 0 };
 
 // ── STATE ────────────────────────────────────────────
 let S = {
@@ -420,6 +420,8 @@ async function loadAll() {
   (settings || []).forEach(s => { settingsMap[s.key] = s.value; });
   cache.season          = settingsMap['season']            || 'Seizoen 2024–2025';
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
+  cache.seasonCost      = parseFloat(settingsMap['season_cost'])       || 0;
+  cache.seasonPaid      = parseFloat(settingsMap['season_paid'])       || 0;
   return true;
 }
 
@@ -547,17 +549,16 @@ const matchCard = m => {
   return `
   <div class="card">
     <span class="match-date-pill">${fmtDate(m.date)}</span>
+    <div class="score-block" style="margin-bottom:16px">
+      <div class="score-num">${m.teamA.goals??0}<span class="score-dash"> – </span>${m.teamB.goals??0}</div>
+      <div class="score-lbl">eindstand</div>
+    </div>
     <div class="match-body">
       <div class="match-team">
-        <div class="team-label a">Team A</div>
-        <div class="team-players">${chips(m.teamA.players)||'<span style="color:var(--text-soft);font-size:13px">—</span>'}</div>
-      </div>
-      <div class="score-block">
-        <div class="score-num">${m.teamA.goals??0}<span class="score-dash"> – </span>${m.teamB.goals??0}</div>
-        <div class="score-lbl">eindstand</div>
+        <div class="team-label a">Team Spaargaren</div>
       </div>
       <div class="match-team">
-        <div class="team-label b">Team B</div>
+        <div class="team-label b">Team RoBo</div>
         <div class="team-players">${chips(m.teamB.players)||'<span style="color:var(--text-soft);font-size:13px">—</span>'}</div>
       </div>
     </div>
@@ -616,7 +617,7 @@ const pageAdmin = () => `
   <div class="page-header"><div class="page-title">Beheer</div></div>
   <div class="tabs">
     ${at('matches','Wedstrijden')} ${at('players','Spelers')}
-    ${at('tikkie','Tikkie')} ${at('settings','Instellingen')}
+    ${at('tikkie','Kosten')} ${at('settings','Instellingen')}
   </div>
   ${S.adminTab==='matches'  ? adminMatches()  : ''}
   ${S.adminTab==='players'  ? adminPlayers()  : ''}
@@ -651,27 +652,61 @@ const adminPlayers = () => `
         </tbody></table></div>`}`;
 
 const adminTikkie = () => {
-  const pps   = cache.pricePerSession;
-  const stats = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
-  const total = stats.reduce((t,s)=>t+s.played*pps, 0);
+  const pps        = cache.pricePerSession;
+  const seasonCost = cache.seasonCost;
+  const seasonPaid = cache.seasonPaid;
+  const remaining  = Math.max(0, seasonCost - seasonPaid);
+  const stats      = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
+  const totalSessions = stats.reduce((t,s)=>t+s.played, 0);
+  const calcPps    = (seasonCost > 0 && cache.matches.length > 0)
+                       ? seasonCost / cache.matches.length
+                       : pps;
+
   return `
-    <p style="color:var(--text-soft);font-size:13.5px;margin-bottom:20px">
-      Kosten per sessie: <strong style="color:var(--gold-lt)">${euro(pps)}</strong>
-      &nbsp;·&nbsp; Aanpassen via Instellingen
-    </p>
+    <div class="settings-card" style="margin-bottom:14px">
+      <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin-bottom:18px">Seizoenskosten</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label>Totale kosten seizoen (€)</label>
+          <input type="number" id="seasonCostInput" value="${seasonCost}" step="1" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Al betaald (€)</label>
+          <input type="number" id="seasonPaidInput" value="${seasonPaid}" step="1" min="0" placeholder="0">
+        </div>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:18px">
+        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Nog te betalen</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:${remaining>0?'var(--red)':'var(--green-ok, #3aab6b)'}">${euro(remaining)}</div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Kosten per sessie${seasonCost>0?' (berekend)':' (handmatig)'}</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--gold-lt)">${euro(calcPps)}</div>
+        </div>
+        ${seasonCost>0 ? `
+        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Gebaseerd op</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--text)">${cache.matches.length} wedstrijden</div>
+        </div>` : ''}
+      </div>
+      <button class="btn btn-gold" id="saveKostenBtn">Opslaan</button>
+    </div>
+
+    <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin-bottom:14px">Per speler</div>
     ${!stats.length
       ? `<div class="empty"><div class="empty-icon">💸</div><p>Geen deelnames gevonden.</p></div>`
       : `${stats.map(s=>`
           <div class="tikkie-item">
             <div>
               <div class="tikkie-name">${s.name}</div>
-              <div class="tikkie-detail">${s.played}× gespeeld × ${euro(pps)}</div>
+              <div class="tikkie-detail">${s.played}× gespeeld × ${euro(calcPps)}</div>
             </div>
-            <div class="tikkie-amount">${euro(s.played*pps)}</div>
+            <div class="tikkie-amount">${euro(s.played*calcPps)}</div>
           </div>`).join('')}
         <div class="total-row">
           <span>Totaal te innen</span>
-          <div class="total-amount">${euro(total)}</div>
+          <div class="total-amount">${euro(stats.reduce((t,s)=>t+s.played*calcPps,0))}</div>
         </div>`}`;
 };
 
@@ -742,20 +777,16 @@ const matchModal = () => {
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-group">
-        <label>Team A — Doelpunten</label>
+        <label>Team Spaargaren — Doelpunten</label>
         <input type="number" id="goalsA" min="0" value="${ed?.teamA?.goals??0}">
       </div>
       <div class="form-group">
-        <label>Team B — Doelpunten</label>
+        <label>Team RoBo — Doelpunten</label>
         <input type="number" id="goalsB" min="0" value="${ed?.teamB?.goals??0}">
       </div>
     </div>
     <div class="form-group">
-      <label>Team A — Spelers</label>
-      <div class="players-grid">${pGrid('A',selA)}</div>
-    </div>
-    <div class="form-group">
-      <label>Team B — Spelers</label>
+      <label>Team RoBo — Spelers</label>
       <div class="players-grid">${pGrid('B',selB)}</div>
     </div>
     ${cache.players.length ? `
@@ -836,6 +867,7 @@ const wire = () => {
 
   eid('saveMatchBtn')?.addEventListener('click', saveMatch);
   eid('saveSettingsBtn')?.addEventListener('click', saveSettings);
+  eid('saveKostenBtn')?.addEventListener('click', saveKosten);
 };
 
 const wireScorers = () =>
@@ -888,6 +920,19 @@ const saveSettings = () => {
     await dbSaveSetting('season', season);
     await dbSaveSetting('price_per_session', isNaN(price)?5:price);
   }, 'Instellingen opgeslagen');
+};
+
+const saveKosten = () => {
+  const cost = parseFloat(eid('seasonCostInput').value) || 0;
+  const paid = parseFloat(eid('seasonPaidInput').value) || 0;
+  // Als er seizoenskosten zijn, herbereken de prijs per sessie
+  const matches = cache.matches.length;
+  const newPps  = (cost > 0 && matches > 0) ? cost / matches : cache.pricePerSession;
+  doAction(async () => {
+    await dbSaveSetting('season_cost', cost);
+    await dbSaveSetting('season_paid', paid);
+    await dbSaveSetting('price_per_session', newPps);
+  }, 'Kosten opgeslagen');
 };
 
 // ── CONFIG ERROR ──────────────────────────────────────
