@@ -475,6 +475,20 @@
     .col-been      { display: none; }
     .foot-stats-table td:nth-child(2), .foot-stats-table th:nth-child(2) { display: none; }
   }
+
+  .season-select {
+    background: var(--navy3); border: 1px solid var(--border2);
+    color: var(--white); border-radius: 8px; padding: 6px 10px;
+    font-size: 12px; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; max-width: 180px;
+  }
+  .season-select:focus { outline: none; border-color: var(--gold); }
+
+  /* Kosten breakdown tabel */
+  .kosten-breakdown { background: var(--navy3); border-radius: 10px; overflow: hidden; margin-bottom: 4px; }
+  .kosten-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--divider); }
+  .kosten-row:last-child { border-bottom: none; }
+  .kosten-row.total { font-weight: 700; color: var(--white); background: var(--panel2); }
 </style>
 </head>
 <body>
@@ -505,12 +519,12 @@ const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── IN-MEMORY CACHE ──────────────────────────────────
-let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00, seasonCost: 0, seasonPaid: 0, extraCosts: [], paymentsPaid: [] };
+let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00, seasonCost: 0, seasonPaid: 0, extraCosts: [], paymentsPaid: [], seasons: [], currentSeasonId: null };
 
 // ── STATE ────────────────────────────────────────────
 let S = {
   page: 'results', isAdmin: false, loginVisible: false, modal: null,
-  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches', resultsTab: 'uitslagen'
+  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches', resultsTab: 'uitslagen', selectedSeasonId: null
 };
 
 // ── HELPERS ──────────────────────────────────────────
@@ -547,16 +561,18 @@ const setSaving = show => {
 async function loadAll() {
   const [
     { data: players,      error: e1 },
-    { data: matches,      error: e2 },
+    { data: allMatches,   error: e2 },
     { data: matchPlayers, error: e3 },
     { data: matchScorers, error: e4 },
-    { data: settings,     error: e5 }
+    { data: settings,     error: e5 },
+    { data: seasons,      error: e6 }
   ] = await Promise.all([
     sb.from('players').select('*').order('name'),
     sb.from('matches').select('*').order('date', { ascending: false }),
     sb.from('match_players').select('*'),
     sb.from('match_scorers').select('*'),
-    sb.from('settings').select('*')
+    sb.from('settings').select('*'),
+    sb.from('seasons').select('*').order('created_at', { ascending: false })
   ]);
 
   if (e1 || e2 || e3 || e4 || e5) {
@@ -564,6 +580,19 @@ async function loadAll() {
     showConfigError(err.message);
     return false;
   }
+
+  // Seizoenen opslaan
+  cache.seasons = seasons || [];
+  // Huidig seizoen = nieuwste, of bewaar geselecteerde
+  if (!cache.currentSeasonId && cache.seasons.length) {
+    cache.currentSeasonId = cache.seasons[0].id;
+  }
+  // Gebruik geselecteerd seizoen (of huidig als fallback)
+  const viewSeasonId = S.selectedSeasonId || cache.currentSeasonId;
+  // Filter matches op seizoen (als er seizoenen zijn)
+  const matches = cache.seasons.length > 0 && viewSeasonId
+    ? (allMatches || []).filter(m => m.season_id === viewSeasonId)
+    : (allMatches || []);
 
   cache.players = players || [];
   cache.matches = (matches || []).map(m => ({
@@ -576,7 +605,9 @@ async function loadAll() {
 
   const settingsMap = {};
   (settings || []).forEach(s => { settingsMap[s.key] = s.value; });
-  cache.season          = settingsMap['season']            || 'Seizoen 2024–2025';
+  // Seizoen naam: gebruik naam van geselecteerd seizoen, anders settings
+  const activeSeason = cache.seasons.find(s => s.id === (S.selectedSeasonId || cache.currentSeasonId));
+  cache.season = activeSeason?.name || settingsMap['season'] || 'Seizoen 2024–2025';
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
   cache.seasonCost      = parseFloat(settingsMap['season_cost'])       || 0;
   cache.seasonPaid      = parseFloat(settingsMap['season_paid'])       || 0;
@@ -606,7 +637,7 @@ async function dbSaveMatch(data, existingId = null) {
     await sb.from('match_players').delete().eq('match_id', existingId);
     await sb.from('match_scorers').delete().eq('match_id', existingId);
   } else {
-    const { data: row, error } = await sb.from('matches').insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB }).select().single();
+    const { data: row, error } = await sb.from('matches').insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB, season_id: cache.currentSeasonId }).select().single();
     if (error) throw error;
     matchId = row.id;
   }
@@ -661,9 +692,12 @@ const shell = () => `
       </div>
     </div>
     <nav>
-      ${nb('results','Uitslagen')}
+      ${nb('results','Wedstrijden')}
       ${nb('stats','Statistieken')}
       ${S.isAdmin ? nb('admin','Beheer') : ''}
+      ${cache.seasons.length > 1 ? `<select class="season-select" id="seasonDropdown">
+        ${cache.seasons.map(s=>`<option value="${s.id}"${(S.selectedSeasonId||cache.currentSeasonId)===s.id?' selected':''}>${s.name}</option>`).join('')}
+      </select>` : ''}
     </nav>
     <div class="header-right">
       ${S.isAdmin
@@ -773,8 +807,9 @@ const pageStats = () => `
     <button class="tab${S.statsTab==='attendance'?' active':''}" data-stab="attendance">Opkomst</button>
     <button class="tab${S.statsTab==='stand'?' active':''}" data-stab="stand">Stand</button>
     <button class="tab${S.statsTab==='scorers'?' active':''}" data-stab="scorers">Topscorers</button>
+    <button class="tab${S.statsTab==='kosten'?' active':''}" data-stab="kosten">Kosten</button>
   </div>
-  ${S.statsTab==='scorers' ? tblScorers() : S.statsTab==='stand' ? tblStand() : tblAttendance()}`;
+  ${S.statsTab==='scorers' ? tblScorers() : S.statsTab==='stand' ? tblStand() : S.statsTab==='kosten' ? tblKosten() : tblAttendance()}`;
 
 const tblStand = () => {
   // Alleen gespeelde wedstrijden (score is ingevuld en datum is geweest)
@@ -923,6 +958,82 @@ const footStats = (playedMs) => {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
+  </div>`;
+};
+
+
+const tblKosten = () => {
+  const seasonCost  = cache.seasonCost;
+  const extraTotal  = cache.extraCosts.reduce((t,e)=>t+(parseFloat(e.amount)||0), 0);
+  const totalCost   = seasonCost + extraTotal;
+  const nm          = cache.matches.length;
+  const fmt = n => '€\u00a0' + n.toFixed(2).replace('.',',');
+
+  if (totalCost === 0) return `<div class="empty"><div class="empty-icon">💶</div><p>Nog geen kosten ingesteld.<br>De beheerder kan dit invullen via Beheer → Kosten.</p></div>`;
+
+  const stats = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
+  const playerShare = {};
+  stats.forEach(s => { playerShare[s.id] = 0; });
+
+  if (nm > 0 && totalCost > 0) {
+    const costPerMatch = totalCost / nm;
+    cache.matches.forEach(m => {
+      const allPlayers = [...(m.teamA?.players||[]), ...(m.teamB?.players||[])];
+      const n = allPlayers.length;
+      if (!n) return;
+      const share = costPerMatch / n;
+      allPlayers.forEach(pid => { if (playerShare[pid] !== undefined) playerShare[pid] += share; });
+    });
+  }
+
+  const paid = cache.paymentsPaid;
+  const totalOntvangen = stats.filter(s=>paid.includes(s.id)).reduce((t,s)=>t+(playerShare[s.id]||0),0);
+  const saldo = totalOntvangen - totalCost;
+
+  const extraRows = cache.extraCosts.length ? `
+    <div style="margin-bottom:18px">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:10px">Kostenopbouw</div>
+      <div class="kosten-breakdown">
+        <div class="kosten-row"><span>Huurkosten seizoen</span><span>${fmt(seasonCost)}</span></div>
+        ${cache.extraCosts.map(e=>`<div class="kosten-row"><span>${e.description||'Extra kosten'}</span><span>${fmt(parseFloat(e.amount)||0)}</span></div>`).join('')}
+        <div class="kosten-row total"><span>Totaal</span><span>${fmt(totalCost)}</span></div>
+      </div>
+    </div>` : '';
+
+  const playerRows = stats.map(s => {
+    const isPaid  = paid.includes(s.id);
+    const amount  = playerShare[s.id] || 0;
+    return `
+    <div class="tikkie-item ${isPaid?'paid':''}">
+      <div>
+        <div class="tikkie-name">${s.name}</div>
+        <div class="tikkie-detail">${s.played}× gespeeld</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="tikkie-amount ${isPaid?'paid':''}">${fmt(amount)}</div>
+        ${isPaid ? '<span style="font-size:11px;color:#4caf7d;font-weight:600">✓ betaald</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div style="padding:4px 0">
+    ${extraRows}
+    <div class="kosten-summary" style="margin-bottom:20px">
+      <div class="kosten-stat">
+        <div class="kosten-label">Totale kosten</div>
+        <div class="kosten-val">${fmt(totalCost)}</div>
+      </div>
+      <div class="kosten-stat">
+        <div class="kosten-label">Al ontvangen</div>
+        <div class="kosten-val" style="color:#4caf7d">${fmt(totalOntvangen)}</div>
+      </div>
+      <div class="kosten-stat">
+        <div class="kosten-label">${saldo>=0?'Overschot':'Nog open'}</div>
+        <div class="kosten-val" style="color:${saldo>=0?'#4caf7d':'#e05a5a'}">${fmt(Math.abs(saldo))}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px">Kosten per speler</div>
+    ${!stats.length ? '<p style="color:var(--text-soft);font-size:14px">Geen deelnames gevonden.</p>' : playerRows}
   </div>`;
 };
 
@@ -1119,11 +1230,20 @@ const adminSettings = () => `
       <label>Seizoen naam</label>
       <input type="text" id="seasonInput" value="${cache.season}">
     </div>
-    <div class="form-group">
-      <label>Kosten per sessie (€)</label>
-      <input type="number" id="priceInput" value="${cache.pricePerSession}" step="0.50" min="0">
+    <button class="btn btn-gold" id="saveSettingsBtn" style="margin-top:8px">Instellingen opslaan</button>
+
+    <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+      <div style="font-family:'DM Serif Display',serif;font-size:17px;color:var(--white);margin-bottom:8px">Nieuw seizoen starten</div>
+      <p style="font-size:13px;color:var(--text-soft);margin-bottom:16px;line-height:1.6">
+        Alle wedstrijden en statistieken van het huidige seizoen worden bewaard.<br>
+        Het nieuwe seizoen begint met een schone lei — geen wedstrijden, geen kosten.
+      </p>
+      <div class="form-group">
+        <label>Naam nieuw seizoen</label>
+        <input type="text" id="newSeasonNameInput" placeholder="bijv. Seizoen 2025–2026">
+      </div>
+      <button class="btn btn-danger" id="startNewSeasonBtn">Nieuw seizoen starten →</button>
     </div>
-    <button class="btn btn-gold" id="saveSettingsBtn">Instellingen opslaan</button>
   </div>`;
 
 // ── MODALS ────────────────────────────────────────────
@@ -1241,6 +1361,11 @@ const wire = () => {
   eid('doLoginBtn')?.addEventListener('click', doLogin);
   eid('pwInput')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
   eid('logoutBtn')?.addEventListener('click', ()=>{ S.isAdmin=false; S.page='results'; notify('Uitgelogd'); render(); });
+  eid('seasonDropdown')?.addEventListener('change', e => {
+    S.selectedSeasonId = e.target.value;
+    loadAll().then(() => render());
+  });
+  eid('startNewSeasonBtn')?.addEventListener('click', startNewSeason);
 
   eid('closeModalBtn')?.addEventListener('click', ()=>{ S.modal=null; S.editingMatch=null; S.editingPlayer=null; render(); });
   eid('addMatchBtn')?.addEventListener('click', ()=>{ S.modal='match'; S.editingMatch=null; render(); });
@@ -1342,13 +1467,43 @@ const saveMatch = () => {
   doAction(() => dbSaveMatch(data, existingId), 'Wedstrijd opgeslagen');
 };
 
+const startNewSeason = async () => {
+  const name = eid('newSeasonNameInput')?.value.trim();
+  if (!name) { alert('Voer een naam in voor het nieuwe seizoen.'); return; }
+  if (!confirm(`Weet je zeker dat je een nieuw seizoen wilt starten?\n\nNaam: ${name}\n\nHet huidige seizoen blijft bewaard.`)) return;
+
+  doAction(async () => {
+    // Maak nieuw seizoen aan
+    const { data: newSeason, error } = await sb.from('seasons').insert({ name }).select().single();
+    if (error) throw error;
+    cache.currentSeasonId = newSeason.id;
+    cache.seasons.unshift(newSeason);
+    // Reset kosten settings voor nieuw seizoen
+    await dbSaveSetting('season', name);
+    await dbSaveSetting('season_cost', 0);
+    await dbSaveSetting('season_paid', 0);
+    await dbSaveSetting('extra_costs', '[]');
+    await dbSaveSetting('payments_paid', '[]');
+    cache.season = name;
+    cache.seasonCost = 0;
+    cache.seasonPaid = 0;
+    cache.extraCosts = [];
+    cache.paymentsPaid = [];
+    S.selectedSeasonId = newSeason.id;
+    notify(`Nieuw seizoen "${name}" gestart! 🎉`);
+    render();
+  }, null);
+};
+
+
 const saveSettings = () => {
   const season = eid('seasonInput').value.trim();
-  const price  = parseFloat(eid('priceInput').value);
+  if (!season) return;
+  cache.season = season;
   doAction(async () => {
     await dbSaveSetting('season', season);
-    await dbSaveSetting('price_per_session', isNaN(price)?5:price);
   }, 'Instellingen opgeslagen');
+  render();
 };
 
 const saveKosten = () => {
