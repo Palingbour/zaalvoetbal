@@ -577,10 +577,10 @@ const pageResults = () => {
     </div>
     ${tab==='uitslagen'
       ? (!played.length
-          ? \`<div class="empty"><div class="empty-icon">🏟️</div><p>Nog geen wedstrijden gespeeld.<br>Kom terug na woensdag!</p></div>\`
+          ? `<div class="empty"><div class="empty-icon">🏟️</div><p>Nog geen wedstrijden gespeeld.<br>Kom terug na woensdag!</p></div>`
           : played.map(matchCard).join(''))
       : (!upcoming.length
-          ? \`<div class="empty"><div class="empty-icon">📅</div><p>Geen geplande wedstrijden.<br>Voeg ze toe via Beheer.</p></div>\`
+          ? `<div class="empty"><div class="empty-icon">📅</div><p>Geen geplande wedstrijden.<br>Voeg ze toe via Beheer.</p></div>`
           : upcoming.map(scheduleCard).join(''))}`;
 };
 
@@ -593,19 +593,19 @@ const scheduleCard = m => {
   const daysLeft = Math.ceil((d - new Date().setHours(0,0,0,0)) / 86400000);
   const badge = daysLeft === 0 ? '<span class="schedule-badge today">Vandaag!</span>'
               : daysLeft === 1 ? '<span class="schedule-badge soon">Morgen</span>'
-              : daysLeft <= 7  ? \`<span class="schedule-badge soon">Over ${daysLeft} dagen</span>\`
+              : daysLeft <= 7  ? `<span class="schedule-badge soon">Over ${daysLeft} dagen</span>`
               :                  '<span class="schedule-badge">' + daysLeft + ' dagen</span>';
-  return \`
+  return `
   <div class="card schedule-card">
-    <span class="match-date-pill">\${fmtDate(m.date)}</span>
-    \${badge}
+    <span class="match-date-pill">${fmtDate(m.date)}</span>
+    ${badge}
     <div class="schedule-vs">
       <span class="team-label a">Team Spaargaren</span>
       <span class="schedule-vs-divider">VS</span>
       <span class="team-label b">Team RoBo</span>
     </div>
-    \${actions}
-  </div>\`;
+    ${actions}
+  </div>`;
 };
 
 const matchCard = m => {
@@ -763,15 +763,15 @@ const footStats = () => {
     </tr>`;
   }).join('');
 
-  return \`<div style="margin-top:28px">
+  return `<div style="margin-top:28px">
     <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Been-statistieken</div>
     <table class="stats-table">
       <thead><tr>
         <th>Been</th><th>Spelers</th><th>Doelpunten</th><th>Wedstr. gewonnen</th>
       </tr></thead>
-      <tbody>\${rows}</tbody>
+      <tbody>${rows}</tbody>
     </table>
-  </div>\`;
+  </div>`;
 };
 
 
