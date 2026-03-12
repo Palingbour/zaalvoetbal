@@ -318,10 +318,49 @@
     header { height: auto; padding: 12px 18px; flex-wrap: wrap; gap: 10px; }
     .match-body { grid-template-columns: 1fr; }
     .score-num { font-size: 36px; }
-    main { padding: 24px 16px; }
-    .modal { padding: 24px 18px; }
+    main { padding: 18px 12px; }
+    .modal { padding: 20px 14px; }
     .login-box { padding: 36px 24px; width: 100%; }
-    .bar-track { width: 70px; }
+    .bar-track { width: 50px; }
+
+    /* Stats tables → compact op mobiel */
+    .stats-table th, .stats-table td { padding: 10px 10px; font-size: 13px; }
+    .stats-table th { font-size: 9.5px; letter-spacing: 1px; padding: 8px 10px; }
+    .bar-row { gap: 6px; }
+
+    /* Opkomst: verberg de bar op mobiel, toon alleen getallen */
+    .bar-track { display: none; }
+    .stat-val { font-size: 14px; }
+
+    /* Topscorers: maak compacter */
+    .stats-wrap { border-radius: 8px; }
+
+    /* Kosten per speler */
+    .tikkie-item { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+    .tikkie-amount { font-size: 15px; }
+
+    /* Kosten samenvatting */
+    .kosten-summary { gap: 8px; }
+    .kosten-stat { padding: 10px 12px; min-width: 90px; }
+    .kosten-val { font-size: 18px; }
+
+    /* Extra kosten */
+    .extra-cost-row { flex-direction: column; align-items: stretch; }
+    .extra-desc-input { width: 100%; }
+
+    /* Programma kaart */
+    .schedule-vs { gap: 10px; padding: 12px 0 6px; }
+    .schedule-vs-divider { font-size: 16px; }
+
+    /* Been stats tabel */
+    .foot-table-wrap table th:nth-child(2) { display: none; }
+    .foot-table-wrap table td:nth-child(2) { display: none; }
+
+    /* Admin spelers tabel: verberg been-kolom */
+    .players-table-wrap .col-been { display: none; }
+
+    /* Settings card */
+    .settings-card { padding: 16px 14px; }
   }
 
   .stand-table th, .stand-table td { text-align: center; }
@@ -429,6 +468,13 @@
   .stand-stat-val { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--white); line-height: 1; }
   .stand-stat-lbl { font-size: 10px; color: var(--text-soft); margin-top: 4px; line-height: 1.3; }
   .stand-pct      { font-size: 10px; color: var(--text-soft); }
+
+  /* Kolommen verbergen op mobiel */
+  @media (max-width: 640px) {
+    .col-hide-sm   { display: none; }
+    .col-been      { display: none; }
+    .foot-stats-table td:nth-child(2), .foot-stats-table th:nth-child(2) { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -862,7 +908,7 @@ const footStats = (playedMs) => {
     const winBadge  = f.won   === maxWon   && maxWon   > 0 ? ' <span class="foot-badge green">🏆 meeste wins</span>' : '';
     return `<tr>
       <td style="font-weight:600">${f.label} ${f.emoji}</td>
-      <td style="color:var(--text-soft);font-size:13px">${f.spelers.length} speler${f.spelers.length!==1?'s':''}</td>
+      <td class="col-hide-sm" style="color:var(--text-soft);font-size:13px">${f.spelers.length} speler${f.spelers.length!==1?'s':''}</td>
       <td><span class="stat-val">${f.goals}</span>${goalBadge}</td>
       <td><span class="stat-val" style="color:#4caf7d">${f.won}</span>
           <span style="color:var(--text-soft);font-size:11px;margin-left:4px">${winPct}%</span>${winBadge}</td>
@@ -871,9 +917,9 @@ const footStats = (playedMs) => {
 
   return `<div style="margin-top:28px">
     <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Been-statistieken</div>
-    <table class="stats-table">
+    <table class="stats-table foot-stats-table">
       <thead><tr>
-        <th>Been</th><th>Spelers</th><th>Doelpunten</th><th>Wedstr. gewonnen</th>
+        <th>Been</th><th class="col-hide-sm">Spelers</th><th>Doelpunten</th><th>Wedstr. gewonnen</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -906,11 +952,11 @@ const tblScorers = () => {
   if (!stats.length) return `<div class="empty"><div class="empty-icon">⚽</div><p>Nog geen doelpunten geregistreerd.</p></div>`;
   return `<div class="stats-wrap"><table class="stats-table">
     <thead><tr>
-      <th style="width:48px">#</th>
+      <th style="width:36px">#</th>
       <th>Speler</th>
-      <th>Doelpunten</th>
-      <th style="width:72px" title="Gespeelde wedstrijden">Gespeeld</th>
-      <th style="width:80px" title="Doelpunten per wedstrijd">Per wedstr.</th>
+      <th>Goals</th>
+      <th style="width:72px" class="col-hide-sm" title="Gespeelde wedstrijden">Gespeeld</th>
+      <th style="width:80px" title="Per wedstrijd">Per wedstr.</th>
     </tr></thead>
     <tbody>${stats.map((s,i)=>{
       const pct = s.played > 0 ? (s.goals/s.played*100).toFixed(0) : 0;
@@ -923,7 +969,7 @@ const tblScorers = () => {
           <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(s.goals/max*100)}%"></div></div>
           <span class="stat-val blue">${s.goals}</span>
         </div></td>
-        <td style="text-align:center"><span class="stat-val">${s.played}</span></td>
+        <td style="text-align:center" class="col-hide-sm"><span class="stat-val">${s.played}</span></td>
         <td style="text-align:center">
           <span class="stat-val blue">${gpg}</span>
           <div style="font-size:10px;color:var(--text-soft);margin-top:2px">${pct}%</div>
@@ -959,12 +1005,12 @@ const adminPlayers = () => `
   <div style="margin-bottom:18px"><button class="btn btn-gold" id="addPlayerBtn">+ Speler toevoegen</button></div>
   ${!cache.players.length
     ? `<div class="empty"><div class="empty-icon">👥</div><p>Nog geen spelers. Voeg ze toe!</p></div>`
-    : `<div class="stats-wrap"><table class="stats-table">
-        <thead><tr><th>Naam</th><th>Been</th><th style="width:160px">Acties</th></tr></thead>
+    : `<div class="stats-wrap players-table-wrap"><table class="stats-table">
+        <thead><tr><th>Naam</th><th class="col-been">Been</th><th style="width:160px">Acties</th></tr></thead>
         <tbody>${cache.players.map(p=>`
           <tr>
             <td class="p-name">${p.name}</td>
-            <td style="font-size:13px;color:var(--text-soft)">${{rechts:'Rechts ⚽',links:'Links ⚽',twee:'Twee ⚽⚽'}[p.foot||'rechts']}</td>
+            <td class="col-been" style="font-size:13px;color:var(--text-soft)">${{rechts:'Rechts ⚽',links:'Links ⚽',twee:'Twee ⚽⚽'}[p.foot||'rechts']}</td>
             <td><div style="display:flex;gap:7px;padding:2px 0">
               <button class="btn btn-ghost btn-sm" data-edit-player="${p.id}">Bewerken</button>
               <button class="btn btn-danger btn-sm" data-delete-player="${p.id}">✕</button>
