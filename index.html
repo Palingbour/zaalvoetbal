@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zaalvoetbal (beats Spaargaren)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --navy:      #0b1628;
@@ -22,10 +23,8 @@
     --red:       #d94f4f;
     --divider:   #1a2f50;
   }
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-
   body {
     font-family: 'DM Sans', sans-serif;
     background: var(--navy);
@@ -34,307 +33,144 @@
     font-size: 15px;
     line-height: 1.5;
   }
-
   body::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background-image: radial-gradient(circle, #2a4570 1px, transparent 1px);
     background-size: 32px 32px;
     opacity: 0.20;
     pointer-events: none;
     z-index: 0;
   }
-
   #app { position: relative; z-index: 1; }
 
-  /* HEADER */
+  /* ── HEADER ─────────────────────────────────────── */
   header {
     background: var(--navy2);
     border-bottom: 1px solid var(--border);
     padding: 0 28px;
     height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 200;
     box-shadow: 0 2px 28px #00000055;
   }
-
   .logo { display: flex; align-items: center; gap: 14px; }
-
   .logo-emblem {
-    width: 42px; height: 42px;
-    border-radius: 50%;
+    width: 42px; height: 42px; border-radius: 50%;
     background: linear-gradient(145deg, var(--gold-lt), #9a7020);
     display: flex; align-items: center; justify-content: center;
     font-size: 20px;
     box-shadow: 0 0 0 3px #c9973a28, 0 4px 16px #00000060;
     flex-shrink: 0;
   }
-
   .logo-title {
     font-family: 'DM Serif Display', serif;
-    font-size: 19px;
-    color: var(--white);
-    line-height: 1.1;
+    font-size: 19px; color: var(--white); line-height: 1.1;
   }
-
   .logo-title .subtitle {
-    font-style: italic;
-    font-size: 13px;
-    color: var(--text-soft);
-    font-family: 'DM Serif Display', serif;
+    font-style: italic; font-size: 13px;
+    color: var(--text-soft); font-family: 'DM Serif Display', serif;
   }
-
-  .logo-season {
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    font-weight: 500;
-    margin-top: 2px;
-  }
-
+  .logo-season { font-size: 10px; color: var(--gold); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; margin-top: 2px; }
   nav { display: flex; gap: 2px; }
-
   nav button {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 13.5px;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text-soft);
-    cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13.5px;
+    padding: 8px 16px; border: none; border-radius: 6px;
+    background: transparent; color: var(--text-soft); cursor: pointer;
     transition: color .2s, background .2s;
   }
   nav button:hover { color: var(--text); background: var(--navy3); }
   nav button.active { color: var(--gold-lt); background: var(--gold-dim); }
-
   .header-right { display: flex; align-items: center; gap: 10px; }
-
   .badge-admin {
-    background: var(--gold-dim);
-    border: 1px solid #c9973a60;
-    color: var(--gold-lt);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 20px;
+    background: var(--gold-dim); border: 1px solid #c9973a60;
+    color: var(--gold-lt); font-size: 10px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 20px;
   }
 
-  /* BUTTONS */
+  /* ── BUTTONS ─────────────────────────────────────── */
   .btn {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 13.5px;
-    padding: 8px 18px;
-    border-radius: 7px;
-    border: none;
-    cursor: pointer;
-    transition: all .18s;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13.5px;
+    padding: 8px 18px; border-radius: 7px; border: none;
+    cursor: pointer; transition: all .18s;
   }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-gold {
     background: linear-gradient(135deg, var(--gold-lt), var(--gold));
-    color: #1a0e00;
-    font-weight: 600;
+    color: #1a0e00; font-weight: 600;
   }
-  .btn-gold:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px #c9973a38; }
-  .btn-outline {
-    background: transparent;
-    color: var(--text-soft);
-    border: 1px solid var(--border2);
-  }
+  .btn-gold:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px #c9973a38; }
+  .btn-outline { background: transparent; color: var(--text-soft); border: 1px solid var(--border2); }
   .btn-outline:hover { border-color: var(--gold); color: var(--gold-lt); }
-  .btn-ghost {
-    background: var(--navy3);
-    color: var(--text-soft);
-    border: 1px solid var(--border);
-  }
+  .btn-ghost { background: var(--navy3); color: var(--text-soft); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
-  .btn-danger {
-    background: transparent;
-    color: var(--red);
-    border: 1px solid #d94f4f28;
-  }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid #d94f4f28; }
   .btn-danger:hover { background: #d94f4f12; }
   .btn-sm { padding: 5px 12px; font-size: 12.5px; }
 
-  /* MAIN */
+  /* ── MAIN ────────────────────────────────────────── */
   main { max-width: 980px; margin: 0 auto; padding: 36px 28px; }
 
-  /* PAGE HEADER */
   .page-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 28px;
-    padding-bottom: 20px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 28px; padding-bottom: 20px;
     border-bottom: 1px solid var(--divider);
-    flex-wrap: wrap;
-    gap: 12px;
+    flex-wrap: wrap; gap: 12px;
   }
-
-  .page-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 30px;
-    color: var(--white);
-    line-height: 1;
-  }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 30px; color: var(--white); line-height: 1; }
   .page-title em { font-style: normal; color: var(--gold); }
 
-  /* TABS */
+  /* ── TABS ────────────────────────────────────────── */
   .tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 26px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--divider);
+    display: flex; gap: 6px; margin-bottom: 26px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--divider);
     flex-wrap: wrap;
   }
   .tab {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 13px;
-    padding: 7px 16px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-soft);
-    cursor: pointer;
-    transition: all .18s;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
+    padding: 7px 16px; border-radius: 6px; border: 1px solid transparent;
+    background: transparent; color: var(--text-soft); cursor: pointer; transition: all .18s;
   }
   .tab:hover { color: var(--text); background: var(--navy3); }
   .tab.active { background: var(--gold-dim); border-color: #c9973a45; color: var(--gold-lt); font-weight: 600; }
 
-  /* CARD */
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 22px;
-    margin-bottom: 14px;
-    transition: border-color .2s;
-  }
+  /* ── CARD ────────────────────────────────────────── */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 22px; margin-bottom: 14px; transition: border-color .2s; }
   .card:hover { border-color: var(--border2); }
 
-  /* MATCH */
-  .match-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-
+  /* ── MATCH ───────────────────────────────────────── */
   .match-date-pill {
-    background: var(--navy3);
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-soft);
-    padding: 3px 12px;
+    background: var(--navy3); border: 1px solid var(--border2); border-radius: 20px;
+    font-size: 12px; font-weight: 500; color: var(--text-soft); padding: 3px 12px;
+    display: inline-block; margin-bottom: 16px;
   }
-
-  .match-body {
-    display: grid;
-    grid-template-columns: 1fr 120px 1fr;
-    gap: 14px;
-    align-items: center;
-  }
-
-  .match-team {
-    background: var(--navy2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-  }
-  .team-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
+  .match-body { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 14px; align-items: center; }
+  .match-team { background: var(--navy2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .team-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
   .team-label.a { color: var(--gold); }
   .team-label.b { color: #7ab0d4; }
-
   .team-players { display: flex; flex-wrap: wrap; gap: 5px; }
-
-  .player-chip {
-    background: var(--navy3);
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    padding: 3px 9px;
-    font-size: 12px;
-    color: var(--text);
-  }
-
+  .player-chip { background: var(--navy3); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 9px; font-size: 12px; color: var(--text); }
   .score-block { text-align: center; }
-  .score-num {
-    font-family: 'DM Serif Display', serif;
-    font-size: 50px;
-    color: var(--white);
-    line-height: 1;
-    letter-spacing: 2px;
-  }
+  .score-num { font-family: 'DM Serif Display', serif; font-size: 50px; color: var(--white); line-height: 1; letter-spacing: 2px; }
   .score-dash { color: var(--text-soft); }
-  .score-lbl {
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-soft);
-    margin-top: 5px;
-  }
-
-  .match-scorers {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid var(--divider);
-    font-size: 12.5px;
-    color: var(--text-soft);
-  }
+  .score-lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-soft); margin-top: 5px; }
+  .match-scorers { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--divider); font-size: 12.5px; color: var(--text-soft); }
   .scorer-name { color: var(--text); font-weight: 500; }
-
   .match-actions { margin-top: 12px; display: flex; gap: 7px; }
 
-  /* STATS */
-  .stats-wrap {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
+  /* ── STATS ───────────────────────────────────────── */
+  .stats-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .stats-table { width: 100%; border-collapse: collapse; }
-  .stats-table th {
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-    color: var(--text-soft);
-    text-align: left;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--border);
-    background: var(--navy2);
-  }
-  .stats-table td {
-    padding: 13px 18px;
-    border-bottom: 1px solid var(--divider);
-    font-size: 14px;
-    vertical-align: middle;
-  }
+  .stats-table th { font-size: 10.5px; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text-soft); text-align: left; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--navy2); }
+  .stats-table td { padding: 13px 18px; border-bottom: 1px solid var(--divider); font-size: 14px; vertical-align: middle; }
   .stats-table tr:last-child td { border-bottom: none; }
   .stats-table tbody tr { transition: background .15s; }
   .stats-table tbody tr:hover td { background: var(--navy3); }
-
   .rank-num { font-family: 'DM Serif Display', serif; font-size: 19px; color: var(--border2); width: 44px; text-align: center; }
-  .rank-1 { color: #d4af37; }
-  .rank-2 { color: #a8b2be; }
-  .rank-3 { color: #b08050; }
-
+  .rank-1 { color: #d4af37; } .rank-2 { color: #a8b2be; } .rank-3 { color: #b08050; }
   .p-name { font-weight: 600; font-size: 14.5px; color: var(--white); }
-
   .bar-row { display: flex; align-items: center; gap: 10px; }
   .bar-track { height: 5px; background: var(--navy3); border-radius: 3px; width: 110px; overflow: hidden; }
   .bar-fill { height: 100%; border-radius: 3px; background: var(--gold); }
@@ -342,205 +178,136 @@
   .stat-val { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--gold-lt); min-width: 28px; }
   .stat-val.blue { color: #7ab0d4; }
 
-  /* LOGIN */
+  /* ── MODALS ──────────────────────────────────────── */
   .overlay {
-    position: fixed;
-    inset: 0;
-    background: #00000095;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(8px);
+    position: fixed; inset: 0; background: #00000095;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(8px);
   }
   .login-box {
-    background: var(--panel);
-    border: 1px solid var(--border2);
-    border-radius: 14px;
-    padding: 44px 40px;
-    width: 360px;
-    box-shadow: 0 30px 80px #00000075;
-    text-align: center;
+    background: var(--panel); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 44px 40px; width: 360px;
+    box-shadow: 0 30px 80px #00000075; text-align: center;
   }
   .login-emblem {
-    width: 56px; height: 56px;
-    border-radius: 50%;
+    width: 56px; height: 56px; border-radius: 50%;
     background: linear-gradient(145deg, var(--gold-lt), var(--gold));
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
-    margin: 0 auto 20px;
+    font-size: 24px; margin: 0 auto 20px;
     box-shadow: 0 0 0 6px var(--gold-dim);
   }
   .login-box h2 { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--white); margin-bottom: 6px; }
   .login-box p { color: var(--text-soft); font-size: 13px; margin-bottom: 28px; }
 
-  /* MODAL */
   .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: #00000090;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    z-index: 500;
-    backdrop-filter: blur(5px);
-    padding: 28px 16px;
-    overflow-y: auto;
+    position: fixed; inset: 0; background: #00000090;
+    display: flex; align-items: flex-start; justify-content: center;
+    z-index: 500; backdrop-filter: blur(5px);
+    padding: 28px 16px; overflow-y: auto;
   }
   .modal {
-    background: var(--panel);
-    border: 1px solid var(--border2);
-    border-radius: 12px;
-    padding: 32px;
-    width: 100%;
-    max-width: 620px;
-    margin: auto;
-    box-shadow: 0 24px 70px #00000070;
+    background: var(--panel); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 32px; width: 100%; max-width: 620px;
+    margin: auto; box-shadow: 0 24px 70px #00000070;
   }
   .modal h3 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--white); margin-bottom: 24px; }
-  .modal-footer {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--divider);
-  }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--divider); }
 
-  /* FORM */
+  /* ── FORM ────────────────────────────────────────── */
   .form-group { margin-bottom: 18px; }
-  label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-soft);
-    margin-bottom: 7px;
-  }
+  label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-soft); margin-bottom: 7px; }
   input[type=text], input[type=password], input[type=date],
   input[type=number], select, textarea {
-    width: 100%;
-    background: var(--navy2);
-    border: 1px solid var(--border2);
-    border-radius: 7px;
-    padding: 10px 13px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    outline: none;
+    width: 100%; background: var(--navy2); border: 1px solid var(--border2);
+    border-radius: 7px; padding: 10px 13px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
     transition: border-color .18s, box-shadow .18s;
   }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px var(--gold-dim);
-  }
+  input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
   select option { background: var(--navy2); }
   .error-msg { color: var(--red); font-size: 13px; margin-top: 10px; }
 
-  /* PLAYER GRID */
-  .players-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
-    margin-top: 6px;
-  }
+  /* ── PLAYER GRID ─────────────────────────────────── */
+  .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 6px; }
   .player-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--navy2);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: all .18s;
-    user-select: none;
-    font-size: 13.5px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--navy2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; cursor: pointer;
+    transition: all .18s; user-select: none; font-size: 13.5px;
   }
   .player-check:hover { border-color: var(--border2); }
   .player-check.selected { border-color: var(--gold); background: var(--gold-dim); color: var(--white); }
   .chk-box {
-    width: 16px; height: 16px;
-    border: 2px solid var(--border2);
-    border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px;
-    flex-shrink: 0;
-    transition: all .18s;
+    width: 16px; height: 16px; border: 2px solid var(--border2);
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; flex-shrink: 0; transition: all .18s;
   }
   .player-check.selected .chk-box { background: var(--gold); border-color: var(--gold); color: #1a0e00; font-weight: 700; }
 
-  /* SCORER ROWS */
-  .scorer-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding: 10px 12px;
-    background: var(--navy2);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-  }
+  /* ── SCORER ROWS ─────────────────────────────────── */
+  .scorer-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 10px 12px; background: var(--navy2); border: 1px solid var(--border); border-radius: 7px; }
   .scorer-row select { flex: 1; }
   .scorer-row input[type=number] { width: 72px; }
 
-  /* TIKKIE */
-  .tikkie-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    margin-bottom: 10px;
-    transition: border-color .2s;
-  }
+  /* ── TIKKIE ──────────────────────────────────────── */
+  .tikkie-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; margin-bottom: 10px; transition: border-color .2s; }
   .tikkie-item:hover { border-color: var(--border2); }
   .tikkie-name { font-weight: 600; font-size: 15px; color: var(--white); }
   .tikkie-detail { font-size: 12.5px; color: var(--text-soft); margin-top: 2px; }
   .tikkie-amount { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--gold-lt); }
-  .total-row {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 14px;
-    padding: 16px 20px;
-    border-top: 1px solid var(--border2);
-    margin-top: 6px;
-  }
+  .total-row { display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding: 16px 20px; border-top: 1px solid var(--border2); margin-top: 6px; }
   .total-row span { font-size: 13px; color: var(--text-soft); }
   .total-amount { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--white); }
 
-  /* SETTINGS */
+  /* ── SETTINGS ────────────────────────────────────── */
   .settings-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 28px; }
 
-  /* EMPTY */
+  /* ── EMPTY ───────────────────────────────────────── */
   .empty { text-align: center; padding: 70px 20px; color: var(--text-soft); }
   .empty-icon { font-size: 44px; margin-bottom: 16px; opacity: 0.32; }
   .empty p { font-size: 14.5px; line-height: 1.7; }
 
-  /* NOTIF */
+  /* ── LOADING ─────────────────────────────────────── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: var(--navy);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 2000; gap: 20px;
+  }
+  .spinner {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 3px solid var(--border2);
+    border-top-color: var(--gold);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text-soft); font-size: 14px; letter-spacing: 0.3px; }
+
+  /* ── BUSY INDICATOR (inline ops) ─────────────────── */
+  .saving-indicator {
+    position: fixed; top: 80px; right: 24px;
+    background: var(--navy2); border: 1px solid var(--border2);
+    color: var(--text-soft); font-size: 12.5px;
+    padding: 8px 14px; border-radius: 7px; z-index: 300;
+    display: none; align-items: center; gap: 8px;
+  }
+  .saving-indicator.show { display: flex; }
+  .saving-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse 1s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── NOTIF ───────────────────────────────────────── */
   .notif {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    background: var(--navy2);
-    border: 1px solid var(--gold);
-    color: var(--gold-lt);
-    font-size: 13.5px;
-    font-weight: 500;
-    padding: 12px 20px;
-    border-radius: 8px;
-    z-index: 9999;
-    transform: translateY(80px);
-    opacity: 0;
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--navy2); border: 1px solid var(--gold);
+    color: var(--gold-lt); font-size: 13.5px; font-weight: 500;
+    padding: 12px 20px; border-radius: 8px; z-index: 9999;
+    transform: translateY(80px); opacity: 0;
     transition: all .3s cubic-bezier(.34,1.56,.64,1);
     box-shadow: 0 8px 30px #00000060;
   }
   .notif.show { transform: translateY(0); opacity: 1; }
 
+  /* ── RESPONSIVE ──────────────────────────────────── */
   @media (max-width: 640px) {
     header { height: auto; padding: 12px 18px; flex-wrap: wrap; gap: 10px; }
     .match-body { grid-template-columns: 1fr; }
@@ -553,71 +320,182 @@
 </style>
 </head>
 <body>
-<div id="app"></div>
+
+<div id="loadingScreen" class="loading-overlay">
+  <div class="logo-emblem" style="width:56px;height:56px;font-size:26px">⚽</div>
+  <div class="spinner"></div>
+  <div class="loading-text">Laden…</div>
+</div>
+
+<div id="savingIndicator" class="saving-indicator">
+  <div class="saving-dot"></div>
+  <span>Opslaan…</span>
+</div>
+
+<div id="app" style="display:none"></div>
 <div id="notif" class="notif"></div>
+
 <script>
-// ─── CONFIG ─────────────────────────────────────────
-const ADMIN_PASSWORD = 'woensdag2024'; // ← wijzig dit!
+// ═══════════════════════════════════════════════════════
+//  ⚙️  CONFIGURATIE — vul hier je Supabase gegevens in
+// ═══════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://xizyagonxftqqoimjigf.supabase.co';       // bv. https://xyzabc.supabase.co
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpenlhZ29ueGZ0cXFvaW1qaWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkyODcsImV4cCI6MjA4ODkwNTI4N30.V1WB__YJeJ3wAX1ltlpkjSR6E8rHVyQqF1FsT6vfRsQ';  // begint met "eyJ..."
+const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
+// ═══════════════════════════════════════════════════════
 
-// ─── STORAGE ────────────────────────────────────────
-const DB = {
-  get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
-};
-const getData = () => ({
-  players:         DB.get('zv_players', []),
-  matches:         DB.get('zv_matches', []),
-  season:          DB.get('zv_season', 'Seizoen 2024–2025'),
-  pricePerSession: DB.get('zv_price', 5.00)
-});
-const saveData = d => {
-  if (d.players         !== undefined) DB.set('zv_players', d.players);
-  if (d.matches         !== undefined) DB.set('zv_matches', d.matches);
-  if (d.season          !== undefined) DB.set('zv_season', d.season);
-  if (d.pricePerSession !== undefined) DB.set('zv_price', d.pricePerSession);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── IN-MEMORY CACHE ──────────────────────────────────
+let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00 };
+
+// ── STATE ────────────────────────────────────────────
+let S = {
+  page: 'results', isAdmin: false, loginVisible: false, modal: null,
+  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches'
 };
 
-// ─── STATE ──────────────────────────────────────────
-let S = { page:'results', isAdmin:false, loginVisible:false, modal:null,
-          editingMatch:null, editingPlayer:null, statsTab:'attendance', adminTab:'matches' };
-
-// ─── HELPERS ────────────────────────────────────────
-const genId   = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const pName   = id => (getData().players.find(p=>p.id===id)||{}).name||'?';
-const fmtDate = d => !d ? '' : new Date(d).toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-const euro    = n => '€\u202f' + Number(n).toFixed(2).replace('.',',');
+// ── HELPERS ──────────────────────────────────────────
+const eid     = id  => document.getElementById(id);
+const q       = (sel, fn) => document.querySelectorAll(sel).forEach(fn);
+const pName   = id  => (cache.players.find(p => p.id === id) || {}).name || '?';
+const fmtDate = d   => !d ? '' : new Date(d).toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+const euro    = n   => '€\u202f' + Number(n).toFixed(2).replace('.', ',');
 
 const getStats = () => {
-  const { players, matches } = getData();
   const s = {};
-  players.forEach(p => { s[p.id] = { name:p.name, played:0, goals:0 }; });
-  matches.forEach(m => {
-    [...(m.teamA.players||[]),...(m.teamB.players||[])].forEach(pid => { if(s[pid]) s[pid].played++; });
-    (m.scorers||[]).forEach(sc => { if(s[sc.playerId]) s[sc.playerId].goals += sc.goals||0; });
+  cache.players.forEach(p => { s[p.id] = { name: p.name, played: 0, goals: 0 }; });
+  cache.matches.forEach(m => {
+    [...(m.teamA.players||[]), ...(m.teamB.players||[])].forEach(pid => { if (s[pid]) s[pid].played++; });
+    (m.scorers||[]).forEach(sc => { if (s[sc.playerId]) s[sc.playerId].goals += sc.goals || 0; });
   });
-  return Object.entries(s).map(([id,v]) => ({id,...v}));
+  return Object.entries(s).map(([id, v]) => ({ id, ...v }));
 };
 
-// ─── NOTIFY ─────────────────────────────────────────
+// ── NOTIFICATIONS ─────────────────────────────────────
 const notify = msg => {
-  const el = document.getElementById('notif');
+  const el = eid('notif');
   el.textContent = msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 2800);
+  setTimeout(() => el.classList.remove('show'), 2800);
+};
+const setSaving = show => {
+  eid('savingIndicator').classList.toggle('show', show);
 };
 
-// ─── RENDER ─────────────────────────────────────────
-const render = () => { document.getElementById('app').innerHTML = shell(); wire(); };
+// ══════════════════════════════════════════════════════
+//  DATABASE LAAG
+// ══════════════════════════════════════════════════════
 
-// ─── SHELL ──────────────────────────────────────────
-const shell = () => {
-  const { season } = getData();
-  return `
+async function loadAll() {
+  const [
+    { data: players,      error: e1 },
+    { data: matches,      error: e2 },
+    { data: matchPlayers, error: e3 },
+    { data: matchScorers, error: e4 },
+    { data: settings,     error: e5 }
+  ] = await Promise.all([
+    sb.from('players').select('*').order('name'),
+    sb.from('matches').select('*').order('date', { ascending: false }),
+    sb.from('match_players').select('*'),
+    sb.from('match_scorers').select('*'),
+    sb.from('settings').select('*')
+  ]);
+
+  if (e1 || e2 || e3 || e4 || e5) {
+    const err = e1 || e2 || e3 || e4 || e5;
+    showConfigError(err.message);
+    return false;
+  }
+
+  cache.players = players || [];
+  cache.matches = (matches || []).map(m => ({
+    id:    m.id,
+    date:  m.date,
+    teamA: { goals: m.goals_a, players: (matchPlayers||[]).filter(mp => mp.match_id===m.id && mp.team==='A').map(mp=>mp.player_id) },
+    teamB: { goals: m.goals_b, players: (matchPlayers||[]).filter(mp => mp.match_id===m.id && mp.team==='B').map(mp=>mp.player_id) },
+    scorers: (matchScorers||[]).filter(ms => ms.match_id===m.id).map(ms=>({ playerId: ms.player_id, goals: ms.goals }))
+  }));
+
+  const settingsMap = {};
+  (settings || []).forEach(s => { settingsMap[s.key] = s.value; });
+  cache.season          = settingsMap['season']            || 'Seizoen 2024–2025';
+  cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
+  return true;
+}
+
+async function dbAddPlayer(name) {
+  const { error } = await sb.from('players').insert({ name });
+  if (error) throw error;
+}
+async function dbUpdatePlayer(id, name) {
+  const { error } = await sb.from('players').update({ name }).eq('id', id);
+  if (error) throw error;
+}
+async function dbDeletePlayer(id) {
+  const { error } = await sb.from('players').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function dbSaveMatch(data, existingId = null) {
+  let matchId = existingId;
+  if (existingId) {
+    const { error } = await sb.from('matches').update({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB }).eq('id', existingId);
+    if (error) throw error;
+    await sb.from('match_players').delete().eq('match_id', existingId);
+    await sb.from('match_scorers').delete().eq('match_id', existingId);
+  } else {
+    const { data: row, error } = await sb.from('matches').insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB }).select().single();
+    if (error) throw error;
+    matchId = row.id;
+  }
+  const mpRows = [
+    ...data.playersA.map(pid => ({ match_id: matchId, player_id: pid, team: 'A' })),
+    ...data.playersB.map(pid => ({ match_id: matchId, player_id: pid, team: 'B' }))
+  ];
+  if (mpRows.length) await sb.from('match_players').insert(mpRows);
+  const scRows = data.scorers.map(s => ({ match_id: matchId, player_id: s.playerId, goals: s.goals }));
+  if (scRows.length) await sb.from('match_scorers').insert(scRows);
+}
+
+async function dbDeleteMatch(id) {
+  const { error } = await sb.from('matches').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function dbSaveSetting(key, value) {
+  const { error } = await sb.from('settings').upsert({ key, value: String(value) });
+  if (error) throw error;
+}
+
+// ── GENERIC ASYNC ACTION WRAPPER ──────────────────────
+async function doAction(fn, successMsg) {
+  setSaving(true);
+  try {
+    await fn();
+    await loadAll();
+    render();
+    if (successMsg) notify(successMsg);
+  } catch (err) {
+    notify('Fout: ' + err.message);
+    console.error(err);
+  } finally {
+    setSaving(false);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER ENGINE
+// ══════════════════════════════════════════════════════
+
+const render = () => { eid('app').innerHTML = shell(); wire(); };
+
+const shell = () => `
   <header>
     <div class="logo">
       <div class="logo-emblem">⚽</div>
       <div>
         <div class="logo-title">Zaalvoetbal <span class="subtitle">(beats Spaargaren)</span></div>
-        <div class="logo-season">${season}</div>
+        <div class="logo-season">${cache.season}</div>
       </div>
     </div>
     <nav>
@@ -638,21 +516,18 @@ const shell = () => {
     ${S.page==='admin' && S.isAdmin ? pageAdmin() : ''}
   </main>
   ${S.loginVisible ? loginModal() : ''}
-  ${S.modal ? buildModal() : ''}`;
-};
+  ${S.modal ? buildModal() : ''}
+`;
 
 const nb = (page, lbl) =>
   `<button class="nav-btn${S.page===page?' active':''}" data-page="${page}">${lbl}</button>`;
 
-// ═══ RESULTS ════════════════════════════════════════
+// ── RESULTS ───────────────────────────────────────────
 const pageResults = () => {
-  const { matches } = getData();
-  const sorted = [...matches].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const sorted = [...cache.matches].sort((a,b)=>new Date(b.date)-new Date(a.date));
   return `
     <div class="page-header">
-      <div>
-        <div class="page-title">Uitslagen${sorted.length ? ` <em style="font-size:20px">${sorted.length} gespeeld</em>` : ''}</div>
-      </div>
+      <div class="page-title">Uitslagen${sorted.length ? ` <em style="font-size:20px">${sorted.length} gespeeld</em>` : ''}</div>
     </div>
     ${!sorted.length
       ? `<div class="empty"><div class="empty-icon">🏟️</div><p>Nog geen wedstrijden ingevoerd.<br>Kom terug na woensdag!</p></div>`
@@ -662,16 +537,16 @@ const pageResults = () => {
 const matchCard = m => {
   const chips = pids => (pids||[]).map(pid=>`<span class="player-chip">${pName(pid)}</span>`).join('');
   const scorersHtml = (m.scorers||[]).length
-    ? `<div class="match-scorers">⚽&ensp;${(m.scorers||[]).map(s=>
+    ? `<div class="match-scorers">⚽&ensp;${m.scorers.map(s=>
         `<span class="scorer-name">${pName(s.playerId)}</span>${s.goals>1?` (${s.goals}×)`:''}`
-       ).join('&ensp;·&ensp;')}</div>` : '';
+      ).join('&ensp;·&ensp;')}</div>` : '';
   const actions = S.isAdmin ? `<div class="match-actions">
     <button class="btn btn-ghost btn-sm" data-editMatch="${m.id}">Bewerken</button>
     <button class="btn btn-danger btn-sm" data-deleteMatch="${m.id}">Verwijderen</button>
   </div>` : '';
   return `
   <div class="card">
-    <div class="match-header"><span class="match-date-pill">${fmtDate(m.date)}</span></div>
+    <span class="match-date-pill">${fmtDate(m.date)}</span>
     <div class="match-body">
       <div class="match-team">
         <div class="team-label a">Team A</div>
@@ -690,7 +565,7 @@ const matchCard = m => {
   </div>`;
 };
 
-// ═══ STATS ══════════════════════════════════════════
+// ── STATS ─────────────────────────────────────────────
 const pageStats = () => `
   <div class="page-header"><div class="page-title">Statistieken</div></div>
   <div class="tabs">
@@ -701,7 +576,6 @@ const pageStats = () => `
 
 const tblAttendance = () => {
   const stats = getStats().sort((a,b)=>b.played-a.played);
-  const { matches } = getData();
   const max = stats[0]?.played||1;
   if (!stats.length) return `<div class="empty"><div class="empty-icon">👥</div><p>Voeg spelers toe om statistieken te zien.</p></div>`;
   return `<div class="stats-wrap"><table class="stats-table">
@@ -714,10 +588,9 @@ const tblAttendance = () => {
           <div class="bar-track"><div class="bar-fill" style="width:${Math.round(s.played/max*100)}%"></div></div>
           <span class="stat-val">${s.played}</span>
         </div></td>
-        <td style="color:var(--text-soft);font-size:13px">${matches.length?Math.round(s.played/matches.length*100):0}%</td>
+        <td style="color:var(--text-soft);font-size:13px">${cache.matches.length?Math.round(s.played/cache.matches.length*100):0}%</td>
       </tr>`).join('')}
-    </tbody>
-  </table></div>`;
+    </tbody></table></div>`;
 };
 
 const tblScorers = () => {
@@ -735,42 +608,39 @@ const tblScorers = () => {
           <span class="stat-val blue">${s.goals}</span>
         </div></td>
       </tr>`).join('')}
-    </tbody>
-  </table></div>`;
+    </tbody></table></div>`;
 };
 
-// ═══ ADMIN ══════════════════════════════════════════
-const pageAdmin = () => {
-  const { players, matches, season, pricePerSession } = getData();
-  return `
-    <div class="page-header"><div class="page-title">Beheer</div></div>
-    <div class="tabs">
-      ${at('matches','Wedstrijden')} ${at('players','Spelers')}
-      ${at('tikkie','Tikkie')} ${at('settings','Instellingen')}
-    </div>
-    ${S.adminTab==='matches'  ? adminMatches(matches) : ''}
-    ${S.adminTab==='players'  ? adminPlayers(players) : ''}
-    ${S.adminTab==='tikkie'   ? adminTikkie(pricePerSession) : ''}
-    ${S.adminTab==='settings' ? adminSettings(season,pricePerSession) : ''}`;
-};
+// ── ADMIN ─────────────────────────────────────────────
+const pageAdmin = () => `
+  <div class="page-header"><div class="page-title">Beheer</div></div>
+  <div class="tabs">
+    ${at('matches','Wedstrijden')} ${at('players','Spelers')}
+    ${at('tikkie','Tikkie')} ${at('settings','Instellingen')}
+  </div>
+  ${S.adminTab==='matches'  ? adminMatches()  : ''}
+  ${S.adminTab==='players'  ? adminPlayers()  : ''}
+  ${S.adminTab==='tikkie'   ? adminTikkie()   : ''}
+  ${S.adminTab==='settings' ? adminSettings() : ''}`;
+
 const at = (tab, lbl) =>
   `<button class="tab${S.adminTab===tab?' active':''}" data-atab="${tab}">${lbl}</button>`;
 
-const adminMatches = matches => {
-  const sorted = [...matches].sort((a,b)=>new Date(b.date)-new Date(a.date));
+const adminMatches = () => {
+  const sorted = [...cache.matches].sort((a,b)=>new Date(b.date)-new Date(a.date));
   return `<div style="margin-bottom:18px"><button class="btn btn-gold" id="addMatchBtn">+ Wedstrijd toevoegen</button></div>
     ${!sorted.length
       ? `<div class="empty"><div class="empty-icon">📋</div><p>Nog geen wedstrijden.<br>Voeg de eerste toe!</p></div>`
       : sorted.map(matchCard).join('')}`;
 };
 
-const adminPlayers = players => `
+const adminPlayers = () => `
   <div style="margin-bottom:18px"><button class="btn btn-gold" id="addPlayerBtn">+ Speler toevoegen</button></div>
-  ${!players.length
+  ${!cache.players.length
     ? `<div class="empty"><div class="empty-icon">👥</div><p>Nog geen spelers. Voeg ze toe!</p></div>`
     : `<div class="stats-wrap"><table class="stats-table">
         <thead><tr><th>Naam</th><th style="width:160px">Acties</th></tr></thead>
-        <tbody>${players.map(p=>`
+        <tbody>${cache.players.map(p=>`
           <tr>
             <td class="p-name">${p.name}</td>
             <td><div style="display:flex;gap:7px;padding:2px 0">
@@ -778,10 +648,10 @@ const adminPlayers = players => `
               <button class="btn btn-danger btn-sm" data-deletePlayer="${p.id}">✕</button>
             </div></td>
           </tr>`).join('')}
-        </tbody>
-      </table></div>`}`;
+        </tbody></table></div>`}`;
 
-const adminTikkie = pps => {
+const adminTikkie = () => {
+  const pps   = cache.pricePerSession;
   const stats = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
   const total = stats.reduce((t,s)=>t+s.played*pps, 0);
   return `
@@ -805,20 +675,20 @@ const adminTikkie = pps => {
         </div>`}`;
 };
 
-const adminSettings = (season, pps) => `
+const adminSettings = () => `
   <div class="settings-card">
     <div class="form-group">
       <label>Seizoen naam</label>
-      <input type="text" id="seasonInput" value="${season}">
+      <input type="text" id="seasonInput" value="${cache.season}">
     </div>
     <div class="form-group">
       <label>Kosten per sessie (€)</label>
-      <input type="number" id="priceInput" value="${pps}" step="0.50" min="0">
+      <input type="number" id="priceInput" value="${cache.pricePerSession}" step="0.50" min="0">
     </div>
     <button class="btn btn-gold" id="saveSettingsBtn">Instellingen opslaan</button>
   </div>`;
 
-// ═══ MODALS ═════════════════════════════════════════
+// ── MODALS ────────────────────────────────────────────
 const loginModal = () => `
   <div class="overlay" id="loginOverlay">
     <div class="login-box">
@@ -857,11 +727,10 @@ const playerModal = () => {
 };
 
 const matchModal = () => {
-  const { players } = getData();
   const ed = S.editingMatch;
   const selA = ed?.teamA?.players||[], selB = ed?.teamB?.players||[];
   const exSc = ed?.scorers||[];
-  const pGrid = (team, sel) => players.map(p=>`
+  const pGrid = (team, sel) => cache.players.map(p=>`
     <label class="player-check${sel.includes(p.id)?' selected':''}" data-team="${team}" data-pid="${p.id}">
       <span class="chk-box">${sel.includes(p.id)?'✓':''}</span><span>${p.name}</span>
     </label>`).join('');
@@ -889,12 +758,12 @@ const matchModal = () => {
       <label>Team B — Spelers</label>
       <div class="players-grid">${pGrid('B',selB)}</div>
     </div>
-    ${players.length ? `
+    ${cache.players.length ? `
     <div class="form-group">
       <label>Doelpuntenmakers</label>
       <div id="scorersList">
-        ${exSc.map(s=>scorerRow(s.playerId,s.goals,players)).join('')}
-        ${!exSc.length ? scorerRow('',1,players) : ''}
+        ${exSc.map(s=>scorerRow(s.playerId,s.goals)).join('')}
+        ${!exSc.length ? scorerRow('',1) : ''}
       </div>
       <button class="btn btn-ghost btn-sm" id="addScorerRow" style="margin-top:8px">+ Scorer toevoegen</button>
     </div>` : ''}
@@ -905,17 +774,17 @@ const matchModal = () => {
   </div></div>`;
 };
 
-const scorerRow = (pid, goals, players) => `
+const scorerRow = (pid, goals) => `
   <div class="scorer-row">
     <select class="scorer-select">
       <option value="">— Selecteer speler —</option>
-      ${players.map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.name}</option>`).join('')}
+      ${cache.players.map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.name}</option>`).join('')}
     </select>
     <input type="number" class="scorer-goals" min="1" value="${goals||1}">
     <button class="btn btn-danger btn-sm remove-scorer">✕</button>
   </div>`;
 
-// ═══ WIRING ═════════════════════════════════════════
+// ── WIRING ────────────────────────────────────────────
 const wire = () => {
   q('.nav-btn', b => b.addEventListener('click', ()=>{ S.page=b.dataset.page; render(); }));
   q('[data-stab]', b => b.addEventListener('click', ()=>{ S.statsTab=b.dataset.stab; render(); }));
@@ -932,15 +801,21 @@ const wire = () => {
   eid('addMatchBtn')?.addEventListener('click', ()=>{ S.modal='match'; S.editingMatch=null; render(); });
   eid('addPlayerBtn')?.addEventListener('click', ()=>{ S.modal='player'; S.editingPlayer=null; render(); });
 
-  q('[data-editMatch]', b => b.addEventListener('click', ()=>{ S.editingMatch=getData().matches.find(m=>m.id===b.dataset.editMatch); S.modal='editMatch'; render(); }));
-  q('[data-deleteMatch]', b => b.addEventListener('click', ()=>{
-    if(!confirm('Wedstrijd verwijderen?')) return;
-    const d=getData(); d.matches=d.matches.filter(m=>m.id!==b.dataset.deleteMatch); saveData(d); notify('Wedstrijd verwijderd'); render();
+  q('[data-editMatch]', b => b.addEventListener('click', ()=>{
+    S.editingMatch = cache.matches.find(m=>m.id===b.dataset.editMatch);
+    S.modal = 'editMatch'; render();
   }));
-  q('[data-editPlayer]', b => b.addEventListener('click', ()=>{ S.editingPlayer=getData().players.find(p=>p.id===b.dataset.editPlayer); S.modal='player'; render(); }));
+  q('[data-deleteMatch]', b => b.addEventListener('click', ()=>{
+    if (!confirm('Wedstrijd verwijderen?')) return;
+    doAction(() => dbDeleteMatch(b.dataset.deleteMatch), 'Wedstrijd verwijderd');
+  }));
+  q('[data-editPlayer]', b => b.addEventListener('click', ()=>{
+    S.editingPlayer = cache.players.find(p=>p.id===b.dataset.editPlayer);
+    S.modal = 'player'; render();
+  }));
   q('[data-deletePlayer]', b => b.addEventListener('click', ()=>{
-    if(!confirm('Speler verwijderen?')) return;
-    const d=getData(); d.players=d.players.filter(p=>p.id!==b.dataset.deletePlayer); saveData(d); notify('Speler verwijderd'); render();
+    if (!confirm('Speler verwijderen?')) return;
+    doAction(() => dbDeletePlayer(b.dataset.deletePlayer), 'Speler verwijderd');
   }));
 
   eid('savePlayerBtn')?.addEventListener('click', savePlayer);
@@ -953,70 +828,90 @@ const wire = () => {
 
   eid('addScorerRow')?.addEventListener('click', ()=>{
     const div = document.createElement('div');
-    div.innerHTML = scorerRow('',1,getData().players);
+    div.innerHTML = scorerRow('', 1);
     eid('scorersList').appendChild(div.firstElementChild);
     wireScorers();
   });
   wireScorers();
-  eid('saveMatchBtn')?.addEventListener('click', saveMatch);
 
-  eid('saveSettingsBtn')?.addEventListener('click', ()=>{
-    const s=eid('seasonInput').value.trim();
-    const p=parseFloat(eid('priceInput').value);
-    saveData({season:s, pricePerSession:isNaN(p)?5:p});
-    notify('Instellingen opgeslagen'); render();
-  });
+  eid('saveMatchBtn')?.addEventListener('click', saveMatch);
+  eid('saveSettingsBtn')?.addEventListener('click', saveSettings);
 };
 
-const eid = id => document.getElementById(id);
-const q = (sel, fn) => document.querySelectorAll(sel).forEach(fn);
-const wireScorers = () => q('.remove-scorer', b => b.addEventListener('click', ()=>b.closest('.scorer-row').remove()));
+const wireScorers = () =>
+  q('.remove-scorer', b => b.addEventListener('click', ()=>b.closest('.scorer-row').remove()));
 
-// ═══ ACTIONS ════════════════════════════════════════
+// ── ACTIONS ───────────────────────────────────────────
 const doLogin = () => {
   if (eid('pwInput')?.value === ADMIN_PASSWORD) {
     S.isAdmin=true; S.loginVisible=false; S.page='admin'; S.adminTab='matches';
     notify('Welkom terug, admin!'); render();
   } else {
-    eid('loginError').style.display='block';
+    eid('loginError').style.display = 'block';
   }
 };
 
 const savePlayer = () => {
   const name = eid('playerNameInput').value.trim();
   if (!name) return;
-  const d = getData();
-  if (S.editingPlayer) {
-    const p = d.players.find(p=>p.id===S.editingPlayer.id);
-    if (p) p.name=name; notify('Speler bijgewerkt');
+  const ed = S.editingPlayer;
+  S.modal = null; S.editingPlayer = null;
+  if (ed) {
+    doAction(() => dbUpdatePlayer(ed.id, name), 'Speler bijgewerkt');
   } else {
-    d.players.push({id:genId(),name}); notify(`${name} toegevoegd`);
+    doAction(() => dbAddPlayer(name), `${name} toegevoegd`);
   }
-  saveData(d); S.modal=null; S.editingPlayer=null; render();
 };
 
 const saveMatch = () => {
-  const date=eid('matchDate').value, goalsA=parseInt(eid('goalsA').value)||0, goalsB=parseInt(eid('goalsB').value)||0;
-  const pA=[...document.querySelectorAll('[data-team="A"].selected')].map(e=>e.dataset.pid);
-  const pB=[...document.querySelectorAll('[data-team="B"].selected')].map(e=>e.dataset.pid);
-  const scorers=[];
+  const data = {
+    date:    eid('matchDate').value,
+    goalsA:  parseInt(eid('goalsA').value)||0,
+    goalsB:  parseInt(eid('goalsB').value)||0,
+    playersA: [...document.querySelectorAll('[data-team="A"].selected')].map(e=>e.dataset.pid),
+    playersB: [...document.querySelectorAll('[data-team="B"].selected')].map(e=>e.dataset.pid),
+    scorers:  []
+  };
   document.querySelectorAll('.scorer-row').forEach(row=>{
     const pid=row.querySelector('.scorer-select').value, goals=parseInt(row.querySelector('.scorer-goals').value)||0;
-    if(pid&&goals>0) scorers.push({playerId:pid,goals});
+    if (pid && goals>0) data.scorers.push({ playerId:pid, goals });
   });
-  const d=getData();
-  const m={date,teamA:{goals:goalsA,players:pA},teamB:{goals:goalsB,players:pB},scorers};
-  if(S.editingMatch){
-    const idx=d.matches.findIndex(x=>x.id===S.editingMatch.id);
-    if(idx>=0) d.matches[idx]={...d.matches[idx],...m};
-  } else {
-    d.matches.push({id:genId(),...m});
-  }
-  saveData(d); S.modal=null; S.editingMatch=null; notify('Wedstrijd opgeslagen'); render();
+  const existingId = S.editingMatch?.id || null;
+  S.modal = null; S.editingMatch = null;
+  doAction(() => dbSaveMatch(data, existingId), 'Wedstrijd opgeslagen');
 };
 
-// ═══ BOOT ═══════════════════════════════════════════
-render();
+const saveSettings = () => {
+  const season = eid('seasonInput').value.trim();
+  const price  = parseFloat(eid('priceInput').value);
+  doAction(async () => {
+    await dbSaveSetting('season', season);
+    await dbSaveSetting('price_per_session', isNaN(price)?5:price);
+  }, 'Instellingen opgeslagen');
+};
+
+// ── CONFIG ERROR ──────────────────────────────────────
+const showConfigError = msg => {
+  eid('loadingScreen').innerHTML = `
+    <div style="text-align:center;padding:40px;max-width:460px">
+      <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:22px;color:#f4f8fc;margin-bottom:12px">Verbinding mislukt</div>
+      <div style="color:#8aa0bb;font-size:14px;line-height:1.7;margin-bottom:20px">${msg}</div>
+      <div style="background:#101f38;border:1px solid #2a4570;border-radius:8px;padding:16px;font-size:13px;color:#8aa0bb;text-align:left">
+        Controleer of <code style="color:#e8b85a">SUPABASE_URL</code> en <code style="color:#e8b85a">SUPABASE_ANON_KEY</code>
+        correct zijn ingevuld bovenaan in de HTML-code.
+      </div>
+    </div>`;
+};
+
+// ── BOOT ─────────────────────────────────────────────
+(async () => {
+  const ok = await loadAll();
+  if (!ok) return;
+  eid('loadingScreen').style.display = 'none';
+  eid('app').style.display = 'block';
+  render();
+})();
 </script>
 </body>
 </html>
