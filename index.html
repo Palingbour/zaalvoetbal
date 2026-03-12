@@ -349,6 +349,40 @@
   }
   .foot-badge.gold  { background: #c9973a33; color: var(--gold); }
   .foot-badge.green { background: #4caf7d22; color: #4caf7d; }
+
+  .kosten-summary {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px;
+  }
+  .kosten-stat {
+    flex: 1; min-width: 120px;
+    background: var(--navy3); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 14px 18px;
+  }
+  .kosten-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-soft); margin-bottom: 4px; }
+  .kosten-val   { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--white); }
+
+  .extra-cost-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .extra-desc-input {
+    flex: 1; min-width: 160px;
+    background: var(--input-bg, #0e1e38); border: 1px solid var(--border); color: var(--white);
+    border-radius: 8px; padding: 9px 12px; font-size: 14px;
+  }
+  .extra-amt-input {
+    background: var(--input-bg, #0e1e38); border: 1px solid var(--border); color: var(--white);
+    border-radius: 8px; padding: 9px 12px; font-size: 14px;
+  }
+
+  .pay-check-label {
+    display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1;
+  }
+  .pay-check-label input[type="checkbox"] {
+    width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; flex-shrink: 0;
+  }
+  .tikkie-item.paid { opacity: 0.55; }
+  .tikkie-amount.paid { color: #4caf7d !important; }
 </style>
 </head>
 <body>
@@ -379,7 +413,7 @@ const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── IN-MEMORY CACHE ──────────────────────────────────
-let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00, seasonCost: 0, seasonPaid: 0 };
+let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerSession: 5.00, seasonCost: 0, seasonPaid: 0, extraCosts: [], paymentsPaid: [] };
 
 // ── STATE ────────────────────────────────────────────
 let S = {
@@ -454,6 +488,8 @@ async function loadAll() {
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
   cache.seasonCost      = parseFloat(settingsMap['season_cost'])       || 0;
   cache.seasonPaid      = parseFloat(settingsMap['season_paid'])       || 0;
+  try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts = []; }
+  try { cache.paymentsPaid = JSON.parse(settingsMap['payments_paid'] || '[]'); } catch(e) { cache.paymentsPaid = []; }
   return true;
 }
 
@@ -853,62 +889,98 @@ const adminPlayers = () => `
         </tbody></table></div>`}`;
 
 const adminTikkie = () => {
-  const pps        = cache.pricePerSession;
-  const seasonCost = cache.seasonCost;
-  const seasonPaid = cache.seasonPaid;
-  const remaining  = Math.max(0, seasonCost - seasonPaid);
-  const stats      = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
-  const totalSessions = stats.reduce((t,s)=>t+s.played, 0);
-  const calcPps    = (seasonCost > 0 && cache.matches.length > 0)
-                       ? seasonCost / cache.matches.length
-                       : pps;
+  const seasonCost  = cache.seasonCost;
+  const extraTotal  = cache.extraCosts.reduce((t,e)=>t+(parseFloat(e.amount)||0), 0);
+  const totalCost   = seasonCost + extraTotal;
+  const nm          = cache.matches.length;
+
+  // Berekening per speler: per wedstrijd = totaalkosten/wedstrijden, dan gedeeld door aanwezige spelers
+  const stats = getStats().filter(s=>s.played>0).sort((a,b)=>b.played-a.played);
+  const playerShare = {};
+  stats.forEach(s => { playerShare[s.id] = 0; });
+
+  if (nm > 0 && totalCost > 0) {
+    const costPerMatch = totalCost / nm;
+    cache.matches.forEach(m => {
+      const allPlayers = [...(m.teamA?.players||[]), ...(m.teamB?.players||[])];
+      const n = allPlayers.length;
+      if (!n) return;
+      const share = costPerMatch / n;
+      allPlayers.forEach(pid => { if (playerShare[pid] !== undefined) playerShare[pid] += share; });
+    });
+  }
+
+  const paid    = cache.paymentsPaid;
+  const totalOntvangen = stats.filter(s=>paid.includes(s.id)).reduce((t,s)=>t+(playerShare[s.id]||0),0);
+  const saldo   = totalOntvangen - totalCost;
+
+  const fmt = n => '€\u00a0' + n.toFixed(2).replace('.',',');
+
+  // Extra kosten rows
+  const extraRows = cache.extraCosts.map((e,i) => `
+    <div class="extra-cost-row" data-extra-idx="${i}">
+      <input class="extra-desc-input" data-ei="${i}" value="${e.description||''}" placeholder="Omschrijving">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="color:var(--text-soft);font-size:13px">€</span>
+        <input class="extra-amt-input" data-ei="${i}" type="number" value="${e.amount||''}" min="0" step="0.01" placeholder="0,00" style="width:90px">
+        <button class="btn btn-danger btn-sm" data-remove-extra="${i}">✕</button>
+      </div>
+    </div>`).join('');
+
+  // Speler rijen
+  const playerRows = stats.map(s => {
+    const isPaid  = paid.includes(s.id);
+    const amount  = playerShare[s.id] || 0;
+    return `
+    <div class="tikkie-item ${isPaid?'paid':''}">
+      <label class="pay-check-label">
+        <input type="checkbox" class="pay-checkbox" data-player-id="${s.id}" ${isPaid?'checked':''}>
+        <div>
+          <div class="tikkie-name">${s.name}</div>
+          <div class="tikkie-detail">${s.played}× gespeeld · ${fmt(amount/s.played||0)} p/w</div>
+        </div>
+      </label>
+      <div class="tikkie-amount ${isPaid?'paid':''}">${fmt(amount)}</div>
+    </div>`;
+  }).join('');
 
   return `
     <div class="settings-card" style="margin-bottom:14px">
       <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin-bottom:18px">Seizoenskosten</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="form-group">
-          <label>Totale kosten seizoen (€)</label>
-          <input type="number" id="seasonCostInput" value="${seasonCost}" step="1" min="0" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label>Al betaald (€)</label>
-          <input type="number" id="seasonPaidInput" value="${seasonPaid}" step="1" min="0" placeholder="0">
-        </div>
+      <div class="form-group">
+        <label>Totale huurkosten seizoen (€)</label>
+        <input type="number" id="seasonCostInput" value="${seasonCost}" step="1" min="0" placeholder="0">
       </div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:18px">
-        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
-          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Nog te betalen</div>
-          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:${remaining>0?'var(--red)':'var(--green-ok, #3aab6b)'}">${euro(remaining)}</div>
-        </div>
-        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
-          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Kosten per sessie${seasonCost>0?' (berekend)':' (handmatig)'}</div>
-          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--gold-lt)">${euro(calcPps)}</div>
-        </div>
-        ${seasonCost>0 ? `
-        <div style="background:var(--navy3);border:1px solid var(--border2);border-radius:8px;padding:12px 18px">
-          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:4px">Gebaseerd op</div>
-          <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--text)">${cache.matches.length} wedstrijden</div>
-        </div>` : ''}
-      </div>
-      <button class="btn btn-gold" id="saveKostenBtn">Opslaan</button>
+
+      <div style="font-size:13px;font-weight:600;color:var(--text-soft);margin:18px 0 10px;letter-spacing:.5px">Extra kosten</div>
+      <div id="extraCostsList">${extraRows}</div>
+      <button class="btn btn-ghost btn-sm" id="addExtraBtn" style="margin-top:8px">+ Extra kostenpost toevoegen</button>
+
+      <button class="btn btn-gold" id="saveKostenBtn" style="margin-top:20px">Opslaan</button>
     </div>
 
-    <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin-bottom:14px">Per speler</div>
+    <div class="kosten-summary">
+      <div class="kosten-stat">
+        <div class="kosten-label">Totale kosten</div>
+        <div class="kosten-val">${fmt(totalCost)}</div>
+      </div>
+      <div class="kosten-stat">
+        <div class="kosten-label">Ontvangen</div>
+        <div class="kosten-val" style="color:#4caf7d">${fmt(totalOntvangen)}</div>
+      </div>
+      <div class="kosten-stat">
+        <div class="kosten-label">${saldo>=0?'Overschot':'Nog te ontvangen'}</div>
+        <div class="kosten-val" style="color:${saldo>=0?'#4caf7d':'#e05a5a'}">${fmt(Math.abs(saldo))}</div>
+      </div>
+    </div>
+
+    <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin:24px 0 14px">
+      Betalingen per speler
+      <span style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-soft);margin-left:10px">vink aan wie betaald heeft</span>
+    </div>
     ${!stats.length
       ? `<div class="empty"><div class="empty-icon">💸</div><p>Geen deelnames gevonden.</p></div>`
-      : `${stats.map(s=>`
-          <div class="tikkie-item">
-            <div>
-              <div class="tikkie-name">${s.name}</div>
-              <div class="tikkie-detail">${s.played}× gespeeld × ${euro(calcPps)}</div>
-            </div>
-            <div class="tikkie-amount">${euro(s.played*calcPps)}</div>
-          </div>`).join('')}
-        <div class="total-row">
-          <span>Totaal te innen</span>
-          <div class="total-amount">${euro(stats.reduce((t,s)=>t+s.played*calcPps,0))}</div>
-        </div>`}`;
+      : playerRows}`;
 };
 
 const adminSettings = () => `
@@ -1080,6 +1152,20 @@ const wire = () => {
   eid('saveMatchBtn')?.addEventListener('click', saveMatch);
   eid('saveSettingsBtn')?.addEventListener('click', saveSettings);
   eid('saveKostenBtn')?.addEventListener('click', saveKosten);
+  eid('addExtraBtn')?.addEventListener('click', () => {
+    cache.extraCosts = [...cache.extraCosts, { id: Date.now(), description: '', amount: 0 }];
+    render();
+  });
+  document.querySelectorAll('[data-remove-extra]').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = parseInt(b.dataset.removeExtra);
+      cache.extraCosts = cache.extraCosts.filter((_,idx) => idx !== i);
+      render();
+    });
+  });
+  document.querySelectorAll('.pay-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => togglePayment(cb.dataset.playerId, cb.checked));
+  });
 };
 
 const wireScorers = () =>
@@ -1137,15 +1223,30 @@ const saveSettings = () => {
 
 const saveKosten = () => {
   const cost = parseFloat(eid('seasonCostInput').value) || 0;
-  const paid = parseFloat(eid('seasonPaidInput').value) || 0;
-  // Als er seizoenskosten zijn, herbereken de prijs per sessie
-  const matches = cache.matches.length;
-  const newPps  = (cost > 0 && matches > 0) ? cost / matches : cache.pricePerSession;
+  // Lees huidige extra kosten uit de DOM inputs
+  const extraDescInputs = document.querySelectorAll('.extra-desc-input');
+  const extraAmtInputs  = document.querySelectorAll('.extra-amt-input');
+  const extras = [];
+  extraDescInputs.forEach((inp, i) => {
+    const amt = parseFloat(extraAmtInputs[i]?.value) || 0;
+    if (inp.value.trim() || amt) extras.push({ id: Date.now()+i, description: inp.value.trim(), amount: amt });
+  });
+  cache.extraCosts = extras;
   doAction(async () => {
     await dbSaveSetting('season_cost', cost);
-    await dbSaveSetting('season_paid', paid);
-    await dbSaveSetting('price_per_session', newPps);
+    await dbSaveSetting('extra_costs', JSON.stringify(extras));
   }, 'Kosten opgeslagen');
+};
+
+const togglePayment = (playerId, checked) => {
+  let paid = [...cache.paymentsPaid];
+  if (checked) { if (!paid.includes(playerId)) paid.push(playerId); }
+  else { paid = paid.filter(id => id !== playerId); }
+  cache.paymentsPaid = paid;
+  doAction(async () => {
+    await dbSaveSetting('payments_paid', JSON.stringify(paid));
+  }, checked ? 'Betaling geregistreerd ✓' : 'Betaling verwijderd');
+  render();
 };
 
 // ── CONFIG ERROR ──────────────────────────────────────
