@@ -489,6 +489,89 @@
   .kosten-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--divider); }
   .kosten-row:last-child { border-bottom: none; }
   .kosten-row.total { font-weight: 700; color: var(--white); background: var(--panel2); }
+
+  /* ── MVP ─────────────────────────────────────────── */
+  .mvp-legend {
+    display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px;
+    color: var(--text-soft); margin-bottom: 20px; padding: 10px 14px;
+    background: var(--navy3); border-radius: 8px;
+  }
+  .mvp-legend em { color: var(--gold); font-style: normal; font-weight: 700; }
+  .mvp-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+  }
+  .mvp-row.mvp-leader {
+    border-color: var(--gold); background: var(--panel2);
+    box-shadow: 0 0 0 1px #c9973a33;
+  }
+  .mvp-rank {
+    font-size: 22px; min-width: 32px; text-align: center;
+    font-family: 'DM Serif Display', serif; color: var(--text-soft);
+  }
+  .mvp-info { flex: 1; }
+  .mvp-name { font-weight: 700; font-size: 15px; color: var(--white); margin-bottom: 7px; }
+  .mvp-bar-track {
+    height: 6px; background: var(--navy3); border-radius: 4px;
+    margin-bottom: 6px; overflow: hidden;
+  }
+  .mvp-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--gold), #e8b85a);
+    border-radius: 4px; transition: width .4s ease;
+  }
+  .mvp-breakdown { display: flex; gap: 12px; font-size: 11px; color: var(--text-soft); flex-wrap: wrap; }
+  .mvp-breakdown span { cursor: default; }
+  .mvp-score {
+    font-family: 'DM Serif Display', serif; font-size: 32px;
+    color: var(--gold); min-width: 52px; text-align: right;
+  }
+  .mvp-leader .mvp-score { color: #f0c060; }
+
+  /* ── MOBIEL AANVULLINGEN (max 640px) ─────────────── */
+  @media (max-width: 640px) {
+
+    /* Tabs: kleiner lettertype zodat ze passen */
+    .tab { font-size: 11px; padding: 7px 11px; letter-spacing: .3px; }
+
+    /* Seizoen dropdown in nav */
+    .season-select { max-width: 140px; font-size: 11px; padding: 5px 8px; }
+
+    /* Stand kaart: kleinere punten en teamnaam */
+    .stand-card { padding: 14px 12px; }
+    .stand-card-header { gap: 8px; margin-bottom: 12px; }
+    .stand-team-name { font-size: 15px; }
+    .stand-pts-big { font-size: 20px; }
+    .stand-stat-val { font-size: 16px; }
+    .stand-stat-lbl { font-size: 9px; }
+
+    /* MVP: score kleiner, breakdown compacter */
+    .mvp-row { padding: 12px 12px; gap: 10px; }
+    .mvp-score { font-size: 24px; min-width: 40px; }
+    .mvp-name { font-size: 14px; margin-bottom: 5px; }
+    .mvp-breakdown { gap: 8px; font-size: 10px; }
+    .mvp-legend { font-size: 11px; gap: 8px; padding: 8px 10px; }
+
+    /* Kosten breakdown */
+    .kosten-breakdown { font-size: 13px; }
+    .kosten-row { padding: 9px 12px; font-size: 13px; }
+    .kosten-val { font-size: 18px; }
+    .kosten-stat { padding: 10px 12px; }
+
+    /* Voorkeur (foot stats tabel) */
+    .foot-stats-table th, .foot-stats-table td { font-size: 12px; padding: 9px 8px; }
+
+    /* Opkomst tabel */
+    .stats-table td.p-name, .stats-table th:nth-child(2) { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+
+  @media (max-width: 380px) {
+    /* Hele kleine schermen: nog iets meer comprimeren */
+    .mvp-row { flex-wrap: wrap; }
+    .mvp-score { min-width: 100%; text-align: left; font-size: 20px; }
+    .stand-card-stats { grid-template-columns: repeat(4, 1fr); }
+    .tab { font-size: 10px; padding: 6px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -801,15 +884,25 @@ const matchCard = m => {
 };
 
 // ── STATS ─────────────────────────────────────────────
-const pageStats = () => `
+const pageStats = () => {
+  const tab = S.statsTab;
+  return `
   <div class="page-header"><div class="page-title">Statistieken</div></div>
-  <div class="tabs">
-    <button class="tab${S.statsTab==='attendance'?' active':''}" data-stab="attendance">Opkomst</button>
-    <button class="tab${S.statsTab==='stand'?' active':''}" data-stab="stand">Stand</button>
-    <button class="tab${S.statsTab==='scorers'?' active':''}" data-stab="scorers">Topscorers</button>
-    <button class="tab${S.statsTab==='kosten'?' active':''}" data-stab="kosten">Kosten</button>
+  <div class="tabs" style="flex-wrap:wrap">
+    <button class="tab${tab==='stand'?'     active':''}" data-stab="stand">Stand</button>
+    <button class="tab${tab==='scorers'?'   active':''}" data-stab="scorers">Topscorers</button>
+    <button class="tab${tab==='mvp'?'       active':''}" data-stab="mvp">MVP</button>
+    <button class="tab${tab==='voorkeur'?'  active':''}" data-stab="voorkeur">Voorkeur</button>
+    <button class="tab${tab==='attendance'?' active':''}" data-stab="attendance">Opkomst</button>
+    <button class="tab${tab==='kosten'?'    active':''}" data-stab="kosten">Kosten</button>
   </div>
-  ${S.statsTab==='scorers' ? tblScorers() : S.statsTab==='stand' ? tblStand() : S.statsTab==='kosten' ? tblKosten() : tblAttendance()}`;
+  ${tab==='stand'      ? tblStand()      :
+    tab==='scorers'    ? tblScorers()    :
+    tab==='mvp'        ? tblMVP()        :
+    tab==='voorkeur'   ? tblVoorkeur()   :
+    tab==='kosten'     ? tblKosten()     :
+                         tblAttendance()}`;
+};
 
 const tblStand = () => {
   // Alleen gespeelde wedstrijden (score is ingevuld en datum is geweest)
@@ -890,7 +983,7 @@ const tblStand = () => {
     </div>`;
   }).join('');
 
-  return `<div class="stats-wrap">${standCards}${footStats(ms)}</div>`;
+  return `<div class="stats-wrap">${standCards}</div>`;
 };
 
 const footStats = (playedMs) => {
@@ -1035,6 +1128,83 @@ const tblKosten = () => {
     <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px">Kosten per speler</div>
     ${!stats.length ? '<p style="color:var(--text-soft);font-size:14px">Geen deelnames gevonden.</p>' : playerRows}
   </div>`;
+};
+
+
+// ── MVP ───────────────────────────────────────────────
+const tblMVP = () => {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const playedMs = cache.matches.filter(m =>
+    new Date(m.date) < today && m.teamA.goals != null && m.teamB.goals != null
+  );
+  const totalMatches = playedMs.length;
+  if (!totalMatches) return `<div class="empty"><div class="empty-icon">🏅</div><p>Nog geen gespeelde wedstrijden.</p></div>`;
+
+  const stats = getStats();
+  if (!stats.length) return `<div class="empty"><div class="empty-icon">🏅</div><p>Voeg spelers toe om MVP te berekenen.</p></div>`;
+
+  // Per speler: aantal gewonnen wedstrijden
+  const winsMap = {};
+  stats.forEach(s => { winsMap[s.id] = 0; });
+  playedMs.forEach(m => {
+    const winTeam = m.teamA.goals > m.teamB.goals ? m.teamA.players
+                  : m.teamB.goals > m.teamA.goals ? m.teamB.players : [];
+    winTeam.forEach(pid => { if (winsMap[pid] !== undefined) winsMap[pid]++; });
+  });
+
+  const players = stats.map(s => {
+    const played  = s.played;
+    const goals   = s.goals;
+    const wins    = winsMap[s.id] || 0;
+
+    // Normaliseer elk component naar 0-100
+    // C1: aanwezigheid (gespeeld / totaal wedstrijden) * 100, gewicht 3
+    const c1 = totalMatches > 0 ? (played / totalMatches) * 100 : 0;
+    // C2: scorend vermogen (goals / gespeeld) — cap op 2 goals p/w = 100
+    const c2 = played > 0 ? Math.min((goals / played) / 2 * 100, 100) : 0;
+    // C3: winratio (wins / gespeeld) * 100, gewicht 1
+    const c3 = played > 0 ? (wins / played) * 100 : 0;
+
+    const score = Math.round((c1 * 3 + c2 * 2 + c3 * 1) / 6);
+    return { ...s, wins, c1: Math.round(c1), c2: Math.round(c2), c3: Math.round(c3), score };
+  }).filter(s => s.played > 0).sort((a,b) => b.score - a.score);
+
+  if (!players.length) return `<div class="empty"><div class="empty-icon">🏅</div><p>Nog geen deelnames geregistreerd.</p></div>`;
+
+  const mvp = players[0];
+
+  const rows = players.map((p, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+    const barW  = Math.round(p.score);
+    return `<div class="mvp-row ${i===0?'mvp-leader':''}">
+      <div class="mvp-rank">${medal || (i+1)}</div>
+      <div class="mvp-info">
+        <div class="mvp-name">${p.name}</div>
+        <div class="mvp-bar-track"><div class="mvp-bar-fill" style="width:${barW}%"></div></div>
+        <div class="mvp-breakdown">
+          <span title="Aanwezigheid (×3)">👟 ${p.c1}%</span>
+          <span title="Scorend vermogen (×2)">⚽ ${p.c2}%</span>
+          <span title="Winratio (×1)">🏆 ${p.c3}%</span>
+        </div>
+      </div>
+      <div class="mvp-score">${p.score}</div>
+    </div>`;
+  }).join('');
+
+  return `<div style="padding:4px 0">
+    <div class="mvp-legend">
+      <span>👟 Aanwezigheid <em>×3</em></span>
+      <span>⚽ Scorend vermogen <em>×2</em></span>
+      <span>🏆 Winratio <em>×1</em></span>
+      <span style="color:var(--gold)">Score = gewogen gemiddelde (0–100)</span>
+    </div>
+    ${rows}
+  </div>`;
+};
+
+// ── VOORKEUR (been-statistieken) ──────────────────────
+const tblVoorkeur = () => {
+  return `<div style="padding:4px 0">${footStats()}</div>`;
 };
 
 
