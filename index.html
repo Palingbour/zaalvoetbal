@@ -454,7 +454,7 @@
 const SUPABASE_URL      = 'https://xizyagonxftqqoimjigf.supabase.co';       // bv. https://xyzabc.supabase.co
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpenlhZ29ueGZ0cXFvaW1qaWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkyODcsImV4cCI6MjA4ODkwNTI4N30.V1WB__YJeJ3wAX1ltlpkjSR6E8rHVyQqF1FsT6vfRsQ';  // begint met "eyJ..."
 const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -905,8 +905,17 @@ const tblScorers = () => {
   const max = stats[0]?.goals||1;
   if (!stats.length) return `<div class="empty"><div class="empty-icon">⚽</div><p>Nog geen doelpunten geregistreerd.</p></div>`;
   return `<div class="stats-wrap"><table class="stats-table">
-    <thead><tr><th style="width:48px">#</th><th>Speler</th><th>Doelpunten</th></tr></thead>
-    <tbody>${stats.map((s,i)=>`
+    <thead><tr>
+      <th style="width:48px">#</th>
+      <th>Speler</th>
+      <th>Doelpunten</th>
+      <th style="width:72px" title="Gespeelde wedstrijden">Gespeeld</th>
+      <th style="width:80px" title="Doelpunten per wedstrijd">Per wedstr.</th>
+    </tr></thead>
+    <tbody>${stats.map((s,i)=>{
+      const pct = s.played > 0 ? (s.goals/s.played*100).toFixed(0) : 0;
+      const gpg = s.played > 0 ? (s.goals/s.played).toFixed(2).replace('.',',') : '—';
+      return `
       <tr>
         <td class="rank-num${i<3?' rank-'+(i+1):''}">${i+1}</td>
         <td class="p-name">${s.name}</td>
@@ -914,7 +923,12 @@ const tblScorers = () => {
           <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(s.goals/max*100)}%"></div></div>
           <span class="stat-val blue">${s.goals}</span>
         </div></td>
-      </tr>`).join('')}
+        <td style="text-align:center"><span class="stat-val">${s.played}</span></td>
+        <td style="text-align:center">
+          <span class="stat-val blue">${gpg}</span>
+          <div style="font-size:10px;color:var(--text-soft);margin-top:2px">${pct}%</div>
+        </td>
+      </tr>`}).join('')}
     </tbody></table></div>`;
 };
 
