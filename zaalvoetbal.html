@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woensdag Zaalvoetbal</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00c853;
+    --green-dark: #00962c;
+    --green-dim: #00c85322;
+    --bg: #0a0f0a;
+    --bg2: #111811;
+    --bg3: #1a221a;
+    --card: #151d15;
+    --border: #2a372a;
+    --text: #e8f0e8;
+    --muted: #7a957a;
+    --accent: #c8ff00;
+    --red: #ff4444;
+    --yellow: #ffd600;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* PITCH TEXTURE BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 59px, #ffffff04 60px),
+      repeating-linear-gradient(0deg, transparent, transparent 59px, #ffffff03 60px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0d1a0d 0%, #1a2e0a 100%);
+    border-bottom: 2px solid var(--green);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 30px #00c85330;
+  }
+
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  nav { display: flex; gap: 4px; }
+
+  nav button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all .2s;
+  }
+
+  nav button:hover { color: var(--text); background: var(--bg3); }
+  nav button.active { color: var(--accent); background: var(--green-dim); }
+
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .admin-badge {
+    background: var(--green);
+    color: #000;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+
+  .btn-primary {
+    background: var(--green);
+    color: #000;
+  }
+  .btn-primary:hover { background: #00e060; transform: translateY(-1px); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-accent:hover { background: #d8ff20; }
+
+  .btn-ghost {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--green); color: var(--green); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid #ff444440;
+  }
+  .btn-danger:hover { background: #ff444415; }
+
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* MAIN */
+  main { max-width: 1000px; margin: 0 auto; padding: 30px 20px; }
+
+  /* SECTION TITLE */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+
+  .section-title span { color: var(--green); }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 14px;
+    transition: border-color .2s;
+  }
+
+  .card:hover { border-color: #3a4f3a; }
+
+  /* MATCH CARD */
+  .match-card {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .match-date {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .match-score {
+    text-align: center;
+  }
+
+  .score-display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 48px;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+
+  .score-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .match-team {
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg3);
+  }
+
+  .team-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .team-players {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .player-tag {
+    display: inline-block;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 12px;
+    margin: 2px;
+    color: var(--text);
+  }
+
+  .player-tag.scorer { border-color: var(--green); color: var(--green); }
+
+  .scorers-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* STATS TABLE */
+  .stats-table { width: 100%; border-collapse: collapse; }
+
+  .stats-table th {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-table td {
+    padding: 12px;
+    border-bottom: 1px solid #1e261e;
+    font-size: 14px;
+  }
+
+  .stats-table tr:last-child td { border-bottom: none; }
+
+  .stats-table tr:hover td { background: var(--bg3); }
+
+  .rank {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 20px;
+    color: var(--border);
+    width: 36px;
+  }
+
+  .rank-1 { color: var(--yellow); }
+  .rank-2 { color: #c0c0c0; }
+  .rank-3 { color: #cd7f32; }
+
+  .player-name-cell {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-bar-wrap { display: flex; align-items: center; gap: 10px; }
+
+  .stat-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--green);
+    min-width: 4px;
+    transition: width .4s ease;
+  }
+
+  .stat-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--green);
+    min-width: 28px;
+  }
+
+  /* LOGIN */
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000000cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(6px);
+  }
+
+  .login-box {
+    background: var(--card);
+    border: 1px solid var(--green);
+    border-radius: 14px;
+    padding: 40px;
+    width: 340px;
+    box-shadow: 0 20px 60px #00c85330;
+    text-align: center;
+  }
+
+  .login-box h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; text-align: left; }
+
+  label {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    transition: border-color .2s;
+    outline: none;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-dim);
+  }
+
+  .error-msg {
+    color: var(--red);
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000000bb;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 500;
+    backdrop-filter: blur(4px);
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+    box-shadow: 0 20px 60px #00000080;
+  }
+
+  .modal h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 24px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    color: var(--accent);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  /* PLAYERS GRID */
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .player-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+  }
+
+  .player-check:hover { border-color: var(--green); }
+  .player-check.selected { border-color: var(--green); background: var(--green-dim); }
+
+  .player-check input { display: none; }
+
+  .check-icon {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+
+  .player-check.selected .check-icon {
+    background: var(--green);
+    border-color: var(--green);
+    color: #000;
+  }
+
+  /* SCORERS INPUT */
+  .scorer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--bg3);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .scorer-row select { flex: 1; }
+
+  .scorer-row input[type=number] { width: 70px; }
+
+  /* TIKKIE */
+  .tikkie-card {
+    background: linear-gradient(135deg, var(--card), #1a2e0a);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tikkie-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    text-transform: uppercase;
+  }
+
+  .tikkie-amount {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    color: var(--accent);
+  }
+
+  .tikkie-detail { font-size: 13px; color: var(--muted); }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+  .empty p { font-size: 15px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
+
+  .tab {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .tab:hover { color: var(--text); border-color: #3a4f3a; }
+  .tab.active { background: var(--green); color: #000; border-color: var(--green); }
+
+  /* SEASON SETTING */
+  .season-bar {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .season-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .season-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  /* RESULT BADGE */
+  .result-badge {
+    display: inline-block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    .match-card { grid-template-columns: 1fr; }
+    nav button { padding: 6px 10px; font-size: 12px; }
+    .logo { font-size: 18px; }
+    .score-display { font-size: 36px; }
+    header { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
+  }
+
+  /* PULSE ANIM */
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+  .live { animation: pulse 1.5s ease infinite; color: var(--red); }
+
+  /* TOOLTIP */
+  .tooltip { position: relative; }
+  .tooltip:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: var(--text);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    border: 1px solid var(--border);
+  }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* NOTIFICATION */
+  .notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--green);
+    color: #000;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all .3s;
+    letter-spacing: 0.5px;
+  }
+
+  .notif.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="notif" class="notif"></div>
+
+<script>
+// ==================== DATA LAYER ====================
+const ADMIN_PASSWORD = 'woensdag2024'; // Verander dit!
+
+const DB = {
+  get: (key, def) => { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } },
+  set: (key, val) => localStorage.setItem(key, JSON.stringify(val))
+};
+
+const getData = () => ({
+  players: DB.get('zv_players', []),
+  matches: DB.get('zv_matches', []),
+  season: DB.get('zv_season', 'Seizoen 2024-2025'),
+  pricePerSession: DB.get('zv_price', 5.00)
+});
+
+const saveData = (data) => {
+  if (data.players !== undefined) DB.set('zv_players', data.players);
+  if (data.matches !== undefined) DB.set('zv_matches', data.matches);
+  if (data.season !== undefined) DB.set('zv_season', data.season);
+  if (data.pricePerSession !== undefined) DB.set('zv_price', data.pricePerSession);
+};
+
+let state = {
+  page: 'results',
+  isAdmin: false,
+  loginVisible: false,
+  modal: null, // 'match' | 'player' | 'settings' | 'editMatch'
+  editingMatch: null,
+  adminTab: 'matches'
+};
+
+// ==================== HELPERS ====================
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+const formatDate = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+const getPlayerName = (id) => {
+  const p = getData().players.find(p => p.id === id);
+  return p ? p.name : 'Onbekend';
+};
+
+const getStats = () => {
+  const { players, matches } = getData();
+  const stats = {};
+  players.forEach(p => {
+    stats[p.id] = { name: p.name, played: 0, goals: 0 };
+  });
+  matches.forEach(m => {
+    [...(m.teamA.players || []), ...(m.teamB.players || [])].forEach(pid => {
+      if (stats[pid]) stats[pid].played++;
+    });
+    (m.scorers || []).forEach(s => {
+      if (stats[s.playerId]) stats[s.playerId].goals += (s.goals || 0);
+    });
+  });
+  return Object.entries(stats).map(([id, s]) => ({ id, ...s }));
+};
+
+// ==================== NOTIFICATIONS ====================
+const notify = (msg) => {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+};
+
+// ==================== RENDER ENGINE ====================
+const render = () => {
+  document.getElementById('app').innerHTML = buildApp();
+  attachEvents();
+};
+
+const buildApp = () => {
+  const { season } = getData();
+  return `
+    <header>
+      <div class="logo">
+        <div class="logo-icon">⚽</div>
+        <div>
+          <div>Woensdag</div>
+          <div style="font-size:12px;color:var(--green);letter-spacing:2px;font-weight:600">${season}</div>
+        </div>
+      </div>
+      <nav>
+        ${navBtn('results', '📋 Uitslagen')}
+        ${navBtn('stats', '📊 Statistieken')}
+        ${state.isAdmin ? navBtn('admin', '⚙️ Beheer') : ''}
+      </nav>
+      <div class="header-right">
+        ${state.isAdmin
+          ? `<span class="admin-badge">Admin</span>
+             <button class="btn btn-ghost btn-sm" id="logoutBtn">Uitloggen</button>`
+          : `<button class="btn btn-ghost btn-sm" id="loginBtn">Inloggen</button>`
+        }
+      </div>
+    </header>
+    <main>
+      ${state.page === 'results' ? buildResults() : ''}
+      ${state.page === 'stats' ? buildStats() : ''}
+      ${state.page === 'admin' && state.isAdmin ? buildAdmin() : ''}
+    </main>
+    ${state.loginVisible ? buildLoginModal() : ''}
+    ${state.modal ? buildModal() : ''}
+  `;
+};
+
+const navBtn = (page, label) =>
+  `<button class="nav-btn${state.page === page ? ' active' : ''}" data-page="${page}">${label}</button>`;
+
+// ==================== RESULTS PAGE ====================
+const buildResults = () => {
+  const { matches } = getData();
+  const sorted = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (!sorted.length) return `
+    <div class="section-header">
+      <div class="section-title">Uitslagen</div>
+    </div>
+    <div class="empty">
+      <div class="empty-icon">🏟️</div>
+      <p>Nog geen wedstrijden gespeeld.<br>Kom terug na woensdag!</p>
+    </div>`;
+
+  return `
+    <div class="section-header">
+      <div class="section-title">Uitslagen <span>${sorted.length}x gespeeld</span></div>
+    </div>
+    ${sorted.map(m => buildMatchCard(m)).join('')}
+  `;
+};
+
+const buildMatchCard = (m) => {
+  const scoreA = m.teamA.goals ?? 0;
+  const scoreB = m.teamB.goals ?? 0;
+  const playersA = (m.teamA.players || []).map(pid =>
+    `<span class="player-tag">${getPlayerName(pid)}</span>`).join('');
+  const playersB = (m.teamB.players || []).map(pid =>
+    `<span class="player-tag">${getPlayerName(pid)}</span>`).join('');
+
+  const scorersHtml = (m.scorers || []).length > 0
+    ? `<div class="scorers-line">⚽ ${(m.scorers || []).map(s =>
+        `${getPlayerName(s.playerId)} ${s.goals > 1 ? `(${s.goals}x)` : ''}`).join(' · ')}</div>`
+    : '';
+
+  const editBtn = state.isAdmin
+    ? `<button class="btn btn-ghost btn-sm" data-editMatch="${m.id}" style="margin-top:10px">✏️ Bewerken</button>
+       <button class="btn btn-danger btn-sm" data-deleteMatch="${m.id}" style="margin-top:10px;margin-left:6px">🗑️</button>`
+    : '';
+
+  return `
+    <div class="card">
+      <span class="match-date">${formatDate(m.date)}</span>
+      <div class="match-card">
+        <div class="match-team">
+          <div class="team-name" style="color:var(--green)">Team A</div>
+          <div>${playersA || '<span style="color:var(--muted);font-size:13px">—</span>'}</div>
+        </div>
+        <div class="match-score">
+          <div class="score-display">${scoreA} – ${scoreB}</div>
+          <div class="score-label">eindstand</div>
+        </div>
+        <div class="match-team">
+          <div class="team-name" style="color:#4da6ff">Team B</div>
+          <div>${playersB || '<span style="color:var(--muted);font-size:13px">—</span>'}</div>
+        </div>
+      </div>
+      ${scorersHtml}
+      ${editBtn ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${editBtn}</div>` : ''}
+    </div>
+  `;
+};
+
+// ==================== STATS PAGE ====================
+const buildStats = () => {
+  const stats = getStats();
+  const { matches } = getData();
+
+  return `
+    <div class="section-header">
+      <div class="section-title">Statistieken</div>
+    </div>
+    <div class="tabs">
+      <button class="tab${state.statsTab !== 'scorers' ? ' active' : ''}" data-stab="attendance">🗓️ Opkomst</button>
+      <button class="tab${state.statsTab === 'scorers' ? ' active' : ''}" data-stab="scorers">⚽ Topscorers</button>
+    </div>
+    ${state.statsTab === 'scorers' ? buildScorers(stats) : buildAttendance(stats, matches.length)}
+  `;
+};
+
+const buildAttendance = (stats, totalMatches) => {
+  const sorted = [...stats].sort((a, b) => b.played - a.played);
+  const max = sorted[0]?.played || 1;
+
+  if (!sorted.length) return `<div class="empty"><div class="empty-icon">👥</div><p>Geen spelers gevonden.</p></div>`;
+
+  return `
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Speler</th>
+            <th>Gespeeld</th>
+            <th>% aanwezig</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map((s, i) => `
+            <tr>
+              <td class="rank${i < 3 ? ` rank-${i+1}` : ''}">${i + 1}</td>
+              <td class="player-name-cell">${s.name}</td>
+              <td>
+                <div class="stat-bar-wrap">
+                  <div class="stat-bar" style="width:${Math.round((s.played/max)*120)}px"></div>
+                  <span class="stat-num">${s.played}</span>
+                </div>
+              </td>
+              <td style="color:var(--muted);font-size:13px">${totalMatches ? Math.round(s.played/totalMatches*100) : 0}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+const buildScorers = (stats) => {
+  const sorted = [...stats].filter(s => s.goals > 0).sort((a, b) => b.goals - a.goals);
+  const max = sorted[0]?.goals || 1;
+
+  if (!sorted.length) return `<div class="empty"><div class="empty-icon">⚽</div><p>Nog geen doelpunten geregistreerd.</p></div>`;
+
+  return `
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Speler</th>
+            <th>Doelpunten</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map((s, i) => `
+            <tr>
+              <td class="rank${i < 3 ? ` rank-${i+1}` : ''}">${i + 1}</td>
+              <td class="player-name-cell">${s.name}</td>
+              <td>
+                <div class="stat-bar-wrap">
+                  <div class="stat-bar" style="width:${Math.round((s.goals/max)*120)}px;background:var(--accent)"></div>
+                  <span class="stat-num" style="color:var(--accent)">${s.goals}</span>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+// ==================== ADMIN PAGE ====================
+const buildAdmin = () => {
+  const { players, matches, season, pricePerSession } = getData();
+
+  return `
+    <div class="section-header">
+      <div class="section-title">Beheer</div>
+    </div>
+    <div class="tabs">
+      <button class="tab${state.adminTab === 'matches' ? ' active' : ''}" data-atab="matches">📋 Wedstrijden</button>
+      <button class="tab${state.adminTab === 'players' ? ' active' : ''}" data-atab="players">👥 Spelers</button>
+      <button class="tab${state.adminTab === 'tikkie' ? ' active' : ''}" data-atab="tikkie">💸 Tikkie</button>
+      <button class="tab${state.adminTab === 'settings' ? ' active' : ''}" data-atab="settings">⚙️ Instellingen</button>
+    </div>
+
+    ${state.adminTab === 'matches' ? buildAdminMatches(matches) : ''}
+    ${state.adminTab === 'players' ? buildAdminPlayers(players) : ''}
+    ${state.adminTab === 'tikkie' ? buildAdminTikkie(players, matches, pricePerSession) : ''}
+    ${state.adminTab === 'settings' ? buildAdminSettings(season, pricePerSession) : ''}
+  `;
+};
+
+const buildAdminMatches = (matches) => {
+  const sorted = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date));
+  return `
+    <div style="margin-bottom:16px">
+      <button class="btn btn-primary" id="addMatchBtn">+ Wedstrijd toevoegen</button>
+    </div>
+    ${sorted.length === 0
+      ? `<div class="empty"><div class="empty-icon">📋</div><p>Nog geen wedstrijden. Voeg de eerste toe!</p></div>`
+      : sorted.map(m => buildMatchCard(m)).join('')
+    }
+  `;
+};
+
+const buildAdminPlayers = (players) => `
+  <div style="margin-bottom:16px">
+    <button class="btn btn-primary" id="addPlayerBtn">+ Speler toevoegen</button>
+  </div>
+  ${players.length === 0
+    ? `<div class="empty"><div class="empty-icon">👥</div><p>Nog geen spelers. Voeg spelers toe!</p></div>`
+    : `<div class="card" style="padding:0;overflow:hidden">
+        <table class="stats-table">
+          <thead><tr><th>Naam</th><th>Acties</th></tr></thead>
+          <tbody>
+            ${players.map(p => `
+              <tr>
+                <td class="player-name-cell">${p.name}</td>
+                <td>
+                  <button class="btn btn-ghost btn-sm" data-editPlayer="${p.id}">✏️</button>
+                  <button class="btn btn-danger btn-sm" data-deletePlayer="${p.id}" style="margin-left:6px">🗑️</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`
+  }
+`;
+
+const buildAdminTikkie = (players, matches, pricePerSession) => {
+  const stats = getStats();
+  const sorted = [...stats].filter(s => s.played > 0).sort((a, b) => b.played - a.played);
+
+  return `
+    <div style="margin-bottom:20px">
+      <p style="color:var(--muted);font-size:14px">Kosten per sessie: <strong style="color:var(--accent)">€${Number(pricePerSession).toFixed(2)}</strong></p>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px">Pas dit aan onder Instellingen</p>
+    </div>
+    ${sorted.length === 0
+      ? `<div class="empty"><div class="empty-icon">💸</div><p>Geen deelnames gevonden.</p></div>`
+      : sorted.map(s => {
+          const amount = (s.played * pricePerSession).toFixed(2);
+          return `
+            <div class="tikkie-card">
+              <div>
+                <div class="tikkie-name">${s.name}</div>
+                <div class="tikkie-detail">${s.played}x gespeeld × €${Number(pricePerSession).toFixed(2)}</div>
+              </div>
+              <div class="tikkie-amount">€${amount}</div>
+            </div>
+          `;
+        }).join('')
+    }
+    <div class="divider"></div>
+    <div style="text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:22px;color:var(--muted)">
+      Totaal te innen: <strong style="color:var(--accent)">€${sorted.reduce((t,s) => t + s.played * pricePerSession, 0).toFixed(2)}</strong>
+    </div>
+  `;
+};
+
+const buildAdminSettings = (season, pricePerSession) => `
+  <div class="card">
+    <div class="form-group">
+      <label>Seizoen naam</label>
+      <input type="text" id="seasonInput" value="${season}">
+    </div>
+    <div class="form-group">
+      <label>Kosten per sessie (€)</label>
+      <input type="number" id="priceInput" value="${pricePerSession}" step="0.50" min="0">
+    </div>
+    <button class="btn btn-primary" id="saveSettingsBtn">Opslaan</button>
+  </div>
+`;
+
+// ==================== MODALS ====================
+const buildLoginModal = () => `
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div style="font-size:36px;margin-bottom:12px">🔐</div>
+      <h2>Admin inloggen</h2>
+      <p>Voer het beheerwachtwoord in</p>
+      <div class="form-group">
+        <label>Wachtwoord</label>
+        <input type="password" id="pwInput" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="loginError" class="error-msg" style="display:none">Onjuist wachtwoord</div>
+      <button class="btn btn-primary" id="doLoginBtn" style="width:100%;margin-top:8px">Inloggen</button>
+      <button class="btn btn-ghost" id="cancelLoginBtn" style="width:100%;margin-top:8px">Annuleren</button>
+    </div>
+  </div>
+`;
+
+const buildModal = () => {
+  if (state.modal === 'player') return buildPlayerModal();
+  if (state.modal === 'match' || state.modal === 'editMatch') return buildMatchModal();
+  return '';
+};
+
+const buildPlayerModal = () => {
+  const editing = state.editingPlayer;
+  return `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h3>${editing ? 'Speler bewerken' : 'Speler toevoegen'}</h3>
+        <div class="form-group">
+          <label>Naam</label>
+          <input type="text" id="playerNameInput" value="${editing ? editing.name : ''}" placeholder="Voornaam achternaam">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="closeModalBtn">Annuleren</button>
+          <button class="btn btn-primary" id="savePlayerBtn">${editing ? 'Opslaan' : 'Toevoegen'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+const buildMatchModal = () => {
+  const { players } = getData();
+  const editing = state.editingMatch;
+
+  const existingScorers = editing?.scorers || [];
+  const existingPlayersA = editing?.teamA?.players || [];
+  const existingPlayersB = editing?.teamB?.players || [];
+
+  const playerCheckboxes = (team, selected) => players.map(p => `
+    <label class="player-check${selected.includes(p.id) ? ' selected' : ''}" data-team="${team}" data-pid="${p.id}">
+      <span class="check-icon">${selected.includes(p.id) ? '✓' : ''}</span>
+      <span>${p.name}</span>
+    </label>
+  `).join('');
+
+  const scorersSection = players.length > 0 ? `
+    <div class="form-group">
+      <label>Doelpuntenmakers</label>
+      <div id="scorersList">
+        ${existingScorers.map(s => scorerRow(s.playerId, s.goals, players)).join('')}
+        ${!existingScorers.length ? scorerRow('', 1, players) : ''}
+      </div>
+      <button class="btn btn-ghost btn-sm" id="addScorerRow" style="margin-top:8px">+ Scorer toevoegen</button>
+    </div>
+  ` : '';
+
+  return `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h3>${editing ? 'Wedstrijd bewerken' : 'Wedstrijd invoeren'}</h3>
+        <div class="form-group">
+          <label>Datum</label>
+          <input type="date" id="matchDate" value="${editing?.date || new Date().toISOString().split('T')[0]}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group">
+            <label>Team A – Doelpunten</label>
+            <input type="number" id="goalsA" min="0" value="${editing?.teamA?.goals ?? 0}">
+          </div>
+          <div class="form-group">
+            <label>Team B – Doelpunten</label>
+            <input type="number" id="goalsB" min="0" value="${editing?.teamB?.goals ?? 0}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Team A – Spelers</label>
+          <div class="players-grid" id="teamAGrid">${playerCheckboxes('A', existingPlayersA)}</div>
+        </div>
+        <div class="form-group">
+          <label>Team B – Spelers</label>
+          <div class="players-grid" id="teamBGrid">${playerCheckboxes('B', existingPlayersB)}</div>
+        </div>
+        ${scorersSection}
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="closeModalBtn">Annuleren</button>
+          <button class="btn btn-primary" id="saveMatchBtn">${editing ? 'Opslaan' : 'Wedstrijd opslaan'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+const scorerRow = (playerId, goals, players) => `
+  <div class="scorer-row">
+    <select class="scorer-select">
+      <option value="">— Selecteer speler —</option>
+      ${players.map(p => `<option value="${p.id}"${p.id === playerId ? ' selected' : ''}>${p.name}</option>`).join('')}
+    </select>
+    <input type="number" class="scorer-goals" min="1" value="${goals || 1}">
+    <button class="btn btn-danger btn-sm remove-scorer">✕</button>
+  </div>
+`;
+
+// ==================== EVENT ATTACHMENT ====================
+const attachEvents = () => {
+  // NAV
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.page = btn.dataset.page;
+      render();
+    });
+  });
+
+  // TABS
+  document.querySelectorAll('[data-stab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.statsTab = btn.dataset.stab; render(); });
+  });
+
+  document.querySelectorAll('[data-atab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.adminTab = btn.dataset.atab; render(); });
+  });
+
+  // LOGIN
+  document.getElementById('loginBtn')?.addEventListener('click', () => { state.loginVisible = true; render(); });
+  document.getElementById('cancelLoginBtn')?.addEventListener('click', () => { state.loginVisible = false; render(); });
+  document.getElementById('loginOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'loginOverlay') { state.loginVisible = false; render(); }
+  });
+  document.getElementById('doLoginBtn')?.addEventListener('click', doLogin);
+  document.getElementById('pwInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    state.isAdmin = false;
+    state.page = 'results';
+    notify('Uitgelogd');
+    render();
+  });
+
+  // ADMIN ACTIONS
+  document.getElementById('addMatchBtn')?.addEventListener('click', () => {
+    state.modal = 'match';
+    state.editingMatch = null;
+    render();
+  });
+
+  document.getElementById('addPlayerBtn')?.addEventListener('click', () => {
+    state.modal = 'player';
+    state.editingPlayer = null;
+    render();
+  });
+
+  document.getElementById('closeModalBtn')?.addEventListener('click', () => {
+    state.modal = null;
+    state.editingMatch = null;
+    state.editingPlayer = null;
+    render();
+  });
+
+  // EDIT/DELETE MATCH
+  document.querySelectorAll('[data-editMatch]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = getData().matches.find(m => m.id === btn.dataset.editMatch);
+      state.editingMatch = m;
+      state.modal = 'editMatch';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-deleteMatch]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Wedstrijd verwijderen?')) return;
+      const data = getData();
+      data.matches = data.matches.filter(m => m.id !== btn.dataset.deleteMatch);
+      saveData(data);
+      notify('Wedstrijd verwijderd');
+      render();
+    });
+  });
+
+  // EDIT/DELETE PLAYER
+  document.querySelectorAll('[data-editPlayer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = getData().players.find(p => p.id === btn.dataset.editPlayer);
+      state.editingPlayer = p;
+      state.modal = 'player';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-deletePlayer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Speler verwijderen?')) return;
+      const data = getData();
+      data.players = data.players.filter(p => p.id !== btn.dataset.deletePlayer);
+      saveData(data);
+      notify('Speler verwijderd');
+      render();
+    });
+  });
+
+  // SAVE PLAYER
+  document.getElementById('savePlayerBtn')?.addEventListener('click', savePlayer);
+  document.getElementById('playerNameInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') savePlayer(); });
+
+  // PLAYER CHECKBOXES IN MATCH MODAL
+  document.querySelectorAll('.player-check').forEach(el => {
+    el.addEventListener('click', () => {
+      el.classList.toggle('selected');
+      el.querySelector('.check-icon').textContent = el.classList.contains('selected') ? '✓' : '';
+    });
+  });
+
+  // SCORER ROWS
+  document.getElementById('addScorerRow')?.addEventListener('click', () => {
+    const { players } = getData();
+    const div = document.createElement('div');
+    div.innerHTML = scorerRow('', 1, players);
+    document.getElementById('scorersList').appendChild(div.firstElementChild);
+    attachScorerRemoveButtons();
+  });
+
+  attachScorerRemoveButtons();
+
+  // SAVE MATCH
+  document.getElementById('saveMatchBtn')?.addEventListener('click', saveMatch);
+
+  // SETTINGS
+  document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
+    const season = document.getElementById('seasonInput').value.trim();
+    const price = parseFloat(document.getElementById('priceInput').value);
+    saveData({ season, pricePerSession: isNaN(price) ? 5 : price });
+    notify('Instellingen opgeslagen!');
+    render();
+  });
+};
+
+const attachScorerRemoveButtons = () => {
+  document.querySelectorAll('.remove-scorer').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.scorer-row').remove());
+  });
+};
+
+// ==================== ACTIONS ====================
+const doLogin = () => {
+  const pw = document.getElementById('pwInput')?.value;
+  if (pw === ADMIN_PASSWORD) {
+    state.isAdmin = true;
+    state.loginVisible = false;
+    state.page = 'admin';
+    state.adminTab = 'matches';
+    notify('Welkom terug, admin!');
+    render();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+};
+
+const savePlayer = () => {
+  const name = document.getElementById('playerNameInput').value.trim();
+  if (!name) return;
+  const data = getData();
+  if (state.editingPlayer) {
+    const p = data.players.find(p => p.id === state.editingPlayer.id);
+    if (p) p.name = name;
+  } else {
+    data.players.push({ id: genId(), name });
+  }
+  saveData(data);
+  state.modal = null;
+  state.editingPlayer = null;
+  notify(state.editingPlayer ? 'Speler bijgewerkt' : `${name} toegevoegd!`);
+  render();
+};
+
+const saveMatch = () => {
+  const date = document.getElementById('matchDate').value;
+  const goalsA = parseInt(document.getElementById('goalsA').value) || 0;
+  const goalsB = parseInt(document.getElementById('goalsB').value) || 0;
+
+  const playersA = [...document.querySelectorAll('[data-team="A"].selected')].map(el => el.dataset.pid);
+  const playersB = [...document.querySelectorAll('[data-team="B"].selected')].map(el => el.dataset.pid);
+
+  const scorers = [];
+  document.querySelectorAll('.scorer-row').forEach(row => {
+    const pid = row.querySelector('.scorer-select').value;
+    const goals = parseInt(row.querySelector('.scorer-goals').value) || 0;
+    if (pid && goals > 0) scorers.push({ playerId: pid, goals });
+  });
+
+  const data = getData();
+  const matchData = {
+    date,
+    teamA: { goals: goalsA, players: playersA },
+    teamB: { goals: goalsB, players: playersB },
+    scorers
+  };
+
+  if (state.editingMatch) {
+    const idx = data.matches.findIndex(m => m.id === state.editingMatch.id);
+    if (idx >= 0) data.matches[idx] = { ...data.matches[idx], ...matchData };
+  } else {
+    data.matches.push({ id: genId(), ...matchData });
+  }
+
+  saveData(data);
+  state.modal = null;
+  state.editingMatch = null;
+  notify('Wedstrijd opgeslagen!');
+  render();
+};
+
+// ==================== INIT ====================
+state.statsTab = 'attendance';
+render();
+</script>
+</body>
+</html>
