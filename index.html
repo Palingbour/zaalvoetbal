@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zaalvoetbal (beats Spaargaren)</title>
+<title>Zaalvoetbal (Spaargaren VS RoBo)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --navy:      #0b1628;
@@ -724,6 +723,8 @@ async function loadAll() {
     showConfigError(err.message);
     return false;
   }
+  // e6 (seasons) is optioneel: tabel bestaat misschien nog niet
+  if (e6) console.warn('Seasons tabel niet gevonden (nog aanmaken via handleiding):', e6.message);
 
   // Seizoenen opslaan
   cache.seasons = seasons || [];
@@ -1532,6 +1533,15 @@ const parseImportRows = (rows) => {
   return { results, errors };
 };
 
+const loadSheetJS = () => new Promise((resolve, reject) => {
+  if (window.XLSX) return resolve();
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload = resolve;
+  s.onerror = reject;
+  document.head.appendChild(s);
+});
+
 const handleImportFile = async (file) => {
   const preview = eid('importPreview');
   preview.innerHTML = '<div style="color:var(--text-soft);font-size:13px">Bestand inlezen…</div>';
@@ -1557,7 +1567,8 @@ const handleImportFile = async (file) => {
         return obj;
       });
     } else {
-      // Excel
+      // Excel — laad SheetJS dynamisch
+      await loadSheetJS();
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, { type: 'array', cellDates: false });
       const ws  = wb.Sheets[wb.SheetNames[0]];
