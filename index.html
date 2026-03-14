@@ -6,6 +6,7 @@
 <title>Zaalvoetbal (beats Spaargaren)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --navy:      #0b1628;
@@ -614,6 +615,24 @@
     box-shadow: 0 0 0 3px #c9973a33;
   }
   .season-current-label:hover .season-radio-dot { border-color: var(--gold); }
+
+  /* ── Import sectie ─────────────────────────────────── */
+  .import-code {
+    background: var(--navy3); color: var(--gold);
+    padding: 1px 6px; border-radius: 4px; font-size: 12px;
+    font-family: monospace;
+  }
+  .import-example { background: var(--navy3); border-radius: 8px; padding: 12px 14px; margin-top:4px; }
+  .import-pre {
+    font-family: monospace; font-size: 11px; color: var(--text-soft);
+    white-space: pre-wrap; word-break: break-all; margin: 0;
+  }
+  .import-errors {
+    background: #e05a5a18; border: 1px solid #e05a5a44;
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;
+  }
+  .import-error-row { font-size: 12px; color: #e08a8a; margin-top: 4px; }
+  .import-error { color: #e05a5a; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -1442,6 +1461,182 @@ const adminTikkie = () => {
       : playerRows}`;
 };
 
+// ── IMPORT ────────────────────────────────────────────
+
+const parseImportRows = (rows) => {
+  // rows: array of objects with keys from header row
+  // Normalize header keys: trim + lowercase + replace spaces with _
+  const normalize = s => s?.toString().trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+
+  const results = [];
+  const errors  = [];
+
+  rows.forEach((raw, i) => {
+    const row = {};
+    Object.entries(raw).forEach(([k, v]) => { row[normalize(k)] = v?.toString().trim(); });
+
+    const lineNum = i + 2; // header = row 1
+    const dateRaw = row['datum'] || row['date'];
+    const goalsA  = parseInt(row['doelpunten_spaargaren'] ?? row['goals_spaargaren'] ?? row['goals_a'] ?? 0);
+    const goalsB  = parseInt(row['doelpunten_robo']       ?? row['goals_robo']       ?? row['goals_b'] ?? 0);
+    const spelersRaw = row['spelers_robo'] || row['spelers'] || '';
+    const scorersRaw = row['scorers_robo'] || row['scorers'] || '';
+
+    // Parse date (YYYY-MM-DD or DD-MM-YYYY or DD/MM/YYYY)
+    let date = null;
+    if (dateRaw) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+        date = dateRaw;
+      } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(dateRaw)) {
+        const parts = dateRaw.split(/[-\/]/);
+        date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      } else if (typeof dateRaw === 'number') {
+        // Excel serial date
+        const excelDate = new Date(Date.UTC(1899, 11, 30) + dateRaw * 86400000);
+        date = excelDate.toISOString().split('T')[0];
+      }
+    }
+    if (!date) { errors.push(`Rij ${lineNum}: ongeldige datum "${dateRaw}"`); return; }
+    if (isNaN(goalsA) || isNaN(goalsB)) { errors.push(`Rij ${lineNum}: ongeldige score`); return; }
+
+    // Spelers RoBo: "Jan Bakker,Piet Smit" -> player IDs
+    const spelersNames = spelersRaw ? spelersRaw.split(',').map(n => n.trim()).filter(Boolean) : [];
+    const playersBId   = [];
+    const missingPlayers = [];
+    spelersNames.forEach(name => {
+      const p = cache.players.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (p) playersBId.push(p.id);
+      else missingPlayers.push(name);
+    });
+    if (missingPlayers.length) {
+      errors.push(`Rij ${lineNum}: speler(s) niet gevonden: ${missingPlayers.join(', ')}`);
+      return;
+    }
+
+    // Scorers: "Jan Bakker:2,Piet Smit:1" -> [{playerId, goals}]
+    const scorers = [];
+    if (scorersRaw) {
+      const scorerParts = scorersRaw.split(',').map(s => s.trim()).filter(Boolean);
+      for (const part of scorerParts) {
+        const [name, goalsStr] = part.split(':');
+        const goals = parseInt(goalsStr) || 1;
+        const p = cache.players.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+        if (!p) { errors.push(`Rij ${lineNum}: scorer "${name.trim()}" niet gevonden`); return; }
+        scorers.push({ playerId: p.id, goals });
+      }
+    }
+
+    results.push({ date, goalsA, goalsB, playersA: [], playersB: playersBId, scorers });
+  });
+
+  return { results, errors };
+};
+
+const handleImportFile = async (file) => {
+  const preview = eid('importPreview');
+  preview.innerHTML = '<div style="color:var(--text-soft);font-size:13px">Bestand inlezen…</div>';
+
+  let rows = [];
+  try {
+    if (file.name.endsWith('.csv')) {
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      rows = lines.slice(1).filter(l => l.trim()).map(line => {
+        // Handle quoted fields
+        const vals = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+          else cur += ch;
+        }
+        vals.push(cur.trim());
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+        return obj;
+      });
+    } else {
+      // Excel
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { type: 'array', cellDates: false });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    }
+  } catch(e) {
+    preview.innerHTML = `<div class="import-error">Fout bij inlezen: ${e.message}</div>`;
+    return;
+  }
+
+  if (!rows.length) { preview.innerHTML = '<div class="import-error">Geen rijen gevonden in bestand.</div>'; return; }
+
+  const { results, errors } = parseImportRows(rows);
+
+  const errorHtml = errors.length ? `
+    <div class="import-errors">
+      <div style="font-size:12px;font-weight:700;color:#e05a5a;margin-bottom:6px">⚠️ ${errors.length} fout(en)</div>
+      ${errors.map(e => `<div class="import-error-row">${e}</div>`).join('')}
+    </div>` : '';
+
+  if (!results.length) {
+    preview.innerHTML = errorHtml + '<div class="import-error">Geen geldige wedstrijden gevonden.</div>';
+    return;
+  }
+
+  const previewRows = results.map(r => `
+    <tr>
+      <td>${fmtDate(r.date)}</td>
+      <td style="text-align:center;font-weight:700">${r.goalsA} – ${r.goalsB}</td>
+      <td style="font-size:12px">${r.playersB.map(id => cache.players.find(p=>p.id===id)?.name||'?').join(', ') || '—'}</td>
+      <td style="font-size:12px">${r.scorers.map(s => cache.players.find(p=>p.id===s.playerId)?.name + (s.goals>1?` (${s.goals}×)`:'') ).join(', ') || '—'}</td>
+    </tr>`).join('');
+
+  preview.innerHTML = `
+    ${errorHtml}
+    <div style="font-size:12px;font-weight:700;color:#4caf7d;margin-bottom:10px">✓ ${results.length} wedstrijd(en) klaar om te importeren</div>
+    <div class="stats-wrap" style="margin-bottom:14px;overflow-x:auto">
+      <table class="stats-table">
+        <thead><tr><th>Datum</th><th>Score</th><th>Spelers RoBo</th><th>Scorers</th></tr></thead>
+        <tbody>${previewRows}</tbody>
+      </table>
+    </div>
+    <button class="btn btn-gold" id="confirmImportBtn">✓ Importeer ${results.length} wedstrijd(en)</button>
+    <button class="btn btn-ghost" id="cancelImportBtn" style="margin-left:10px">Annuleren</button>`;
+
+  // Store parsed results for confirm
+  preview._importData = results;
+
+  eid('confirmImportBtn').addEventListener('click', () => doImport(results, preview));
+  eid('cancelImportBtn').addEventListener('click', () => { preview.innerHTML = ''; eid('importFileInput').value = ''; eid('importFileName').textContent = 'Geen bestand gekozen'; });
+};
+
+const doImport = async (results, preview) => {
+  preview.innerHTML = '<div style="color:var(--text-soft);font-size:13px">Bezig met importeren…</div>';
+  let imported = 0;
+  const failed = [];
+  for (const data of results) {
+    try {
+      const { data: row, error } = await sb.from('matches')
+        .insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB, season_id: cache.currentSeasonId })
+        .select().single();
+      if (error) throw error;
+      const mpRows = data.playersB.map(pid => ({ match_id: row.id, player_id: pid, team: 'B' }));
+      if (mpRows.length) await sb.from('match_players').insert(mpRows);
+      const scRows = data.scorers.map(s => ({ match_id: row.id, player_id: s.playerId, goals: s.goals }));
+      if (scRows.length) await sb.from('match_scorers').insert(scRows);
+      imported++;
+    } catch(e) {
+      failed.push(`${data.date}: ${e.message}`);
+    }
+  }
+  await loadAll();
+  render();
+  const failHtml = failed.length ? `<br><span style="color:#e05a5a;font-size:12px">${failed.length} mislukt: ${failed.join('; ')}</span>` : '';
+  notify(`${imported} wedstrijd(en) geïmporteerd!`);
+  preview.innerHTML = `<div style="color:#4caf7d;font-size:14px;font-weight:600">✓ ${imported} wedstrijd(en) geïmporteerd!${failHtml}</div>`;
+};
+
+
 const adminSettings = () => {
   const activeSid = S.selectedSeasonId || cache.currentSeasonId;
 
@@ -1519,6 +1714,29 @@ const adminSettings = () => {
         </div>
       </div>
       <button class="btn btn-gold" id="startNewSeasonBtn" style="margin-top:4px">Nieuw seizoen starten →</button>
+    </div>
+
+    <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border)">
+      <div style="font-family:'DM Serif Display',serif;font-size:17px;color:var(--white);margin-bottom:8px">Wedstrijden importeren</div>
+      <p style="font-size:13px;color:var(--text-soft);margin-bottom:14px;line-height:1.7">
+        Importeer wedstrijden via een <strong style="color:var(--white)">CSV</strong> of <strong style="color:var(--white)">Excel (.xlsx)</strong> bestand.<br>
+        Gebruik het onderstaande formaat. Spelersnamen worden automatisch opgezocht.<br>
+        Kolommen: <code class="import-code">datum</code> <code class="import-code">doelpunten_spaargaren</code> <code class="import-code">doelpunten_robo</code> <code class="import-code">spelers_robo</code> <code class="import-code">scorers_robo</code>
+      </p>
+      <div class="import-example">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:6px">Voorbeeld CSV</div>
+        <pre class="import-pre">datum,doelpunten_spaargaren,doelpunten_robo,spelers_robo,scorers_robo
+2025-01-08,3,2,"Jan Bakker,Piet Smit,Kees de Vries","Jan Bakker:2,Piet Smit:1"
+2025-01-15,1,4,"Jan Bakker,Piet Smit","Piet Smit:2,Jan Bakker:2"</pre>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label class="btn btn-ghost" style="cursor:pointer">
+          📂 Bestand kiezen
+          <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls" style="display:none">
+        </label>
+        <span id="importFileName" style="font-size:13px;color:var(--text-soft)">Geen bestand gekozen</span>
+      </div>
+      <div id="importPreview" style="margin-top:16px"></div>
     </div>
   </div>`;
 };
@@ -1643,6 +1861,15 @@ const wire = () => {
     loadAll().then(() => render());
   });
   eid('startNewSeasonBtn')?.addEventListener('click', startNewSeason);
+  const importInput = eid('importFileInput');
+  if (importInput) {
+    importInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      eid('importFileName').textContent = file.name;
+      handleImportFile(file);
+    });
+  }
   eid('saveSeasonEditBtn')?.addEventListener('click', saveSeasonEdit);
   eid('cancelSeasonEditBtn')?.addEventListener('click', () => { S.editingSeason = null; render(); });
   document.querySelectorAll('.current-season-radio').forEach(r =>
