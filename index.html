@@ -723,30 +723,32 @@ async function loadAll() {
     showConfigError(err.message);
     return false;
   }
-  // e6 (seasons) is optioneel: tabel bestaat misschien nog niet
-  if (e6) console.warn('Seasons tabel niet gevonden (nog aanmaken via handleiding):', e6.message);
+  if (e6) console.warn('Seasons tabel niet beschikbaar:', e6.message);
 
-  // Seizoenen opslaan
+  // ── 1. Settings eerst zodat alles erna beschikbaar is ──
+  const settingsMap = {};
+  (settings || []).forEach(s => { settingsMap[s.key] = s.value; });
+
+  // ── 2. Seizoenen ──
   cache.seasons = seasons || [];
-  // Huidig seizoen: laad uit settings (handmatig ingesteld), anders oudste
-  const storedCurrentId = settingsMap['current_season_id'];
+  const storedCurrentId    = settingsMap['current_season_id'];
   const storedSeasonExists = storedCurrentId && cache.seasons.some(s => s.id === storedCurrentId);
   if (storedSeasonExists) {
     cache.currentSeasonId = storedCurrentId;
   } else if (!cache.currentSeasonId && cache.seasons.length) {
-    // Fallback: nieuwste seizoen (eerste in lijst, gesorteerd desc)
     cache.currentSeasonId = cache.seasons[0].id;
   }
-  // Gebruik geselecteerd seizoen (of huidig als fallback)
+
+  // ── 3. Filter wedstrijden op seizoen ──
   const viewSeasonId = S.selectedSeasonId || cache.currentSeasonId;
-  // Filter matches op seizoen (als er seizoenen zijn)
-  const matches = cache.seasons.length > 0 && viewSeasonId
+  const filteredMatches = cache.seasons.length > 0 && viewSeasonId
     ? (allMatches || []).filter(m => m.season_id === viewSeasonId)
     : (allMatches || []);
 
-  cache.players = players || [];
-  cache.allMatchesRaw = allMatches || [];  // voor matchcount per seizoen
-  cache.matches = (matches || []).map(m => ({
+  // ── 4. Spelers en wedstrijden in cache ──
+  cache.players      = players || [];
+  cache.allMatchesRaw = allMatches || [];
+  cache.matches = filteredMatches.map(m => ({
     id:    m.id,
     date:  m.date,
     teamA: { goals: m.goals_a, players: (matchPlayers||[]).filter(mp => mp.match_id===m.id && mp.team==='A').map(mp=>mp.player_id) },
@@ -754,18 +756,17 @@ async function loadAll() {
     scorers: (matchScorers||[]).filter(ms => ms.match_id===m.id).map(ms=>({ playerId: ms.player_id, goals: ms.goals }))
   }));
 
-  const settingsMap = {};
-  (settings || []).forEach(s => { settingsMap[s.key] = s.value; });
-  // Seizoen naam: gebruik naam van geselecteerd seizoen, anders settings
+  // ── 5. Overige settings ──
   const activeSeason = cache.seasons.find(s => s.id === (S.selectedSeasonId || cache.currentSeasonId));
-  cache.season = activeSeason?.name || settingsMap['season'] || 'Seizoen 2024–2025';
+  cache.season          = activeSeason?.name || settingsMap['season'] || 'Seizoen 2024-2025';
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
   cache.seasonCost      = parseFloat(settingsMap['season_cost'])       || 0;
   cache.seasonPaid      = parseFloat(settingsMap['season_paid'])       || 0;
-  try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts = []; }
+  try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts   = []; }
   try { cache.paymentsPaid = JSON.parse(settingsMap['payments_paid'] || '[]'); } catch(e) { cache.paymentsPaid = []; }
   return true;
 }
+
 
 async function dbAddPlayer(name, foot='rechts') {
   const { error } = await sb.from('players').insert({ name, foot });
