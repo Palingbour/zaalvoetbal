@@ -572,6 +572,29 @@
     .stand-card-stats { grid-template-columns: repeat(4, 1fr); }
     .tab { font-size: 10px; padding: 6px 8px; }
   }
+
+  /* ── Seizoenen beheer ─────────────────────────────── */
+  .season-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 14px 16px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .season-row.season-active { border-color: var(--gold); }
+  .season-row-info { flex: 1; min-width: 0; }
+  .season-row-name { font-weight: 600; font-size: 15px; color: var(--white); margin-bottom: 4px; }
+  .season-row-meta { font-size: 12px; color: var(--text-soft); }
+  .season-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .season-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    background: #c9973a33; color: var(--gold);
+    padding: 2px 7px; border-radius: 10px; vertical-align: middle; margin-left: 6px;
+  }
+  @media (max-width: 640px) {
+    .season-row { flex-direction: column; align-items: flex-start; }
+    .season-row-actions { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -597,7 +620,7 @@
 const SUPABASE_URL      = 'https://xizyagonxftqqoimjigf.supabase.co';       // bv. https://xyzabc.supabase.co
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpenlhZ29ueGZ0cXFvaW1qaWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkyODcsImV4cCI6MjA4ODkwNTI4N30.V1WB__YJeJ3wAX1ltlpkjSR6E8rHVyQqF1FsT6vfRsQ';  // begint met "eyJ..."
 const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -607,7 +630,7 @@ let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerS
 // ── STATE ────────────────────────────────────────────
 let S = {
   page: 'results', isAdmin: false, loginVisible: false, modal: null,
-  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches', resultsTab: 'uitslagen', selectedSeasonId: null
+  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches', resultsTab: 'uitslagen', selectedSeasonId: null, editingSeason: null
 };
 
 // ── HELPERS ──────────────────────────────────────────
@@ -678,6 +701,7 @@ async function loadAll() {
     : (allMatches || []);
 
   cache.players = players || [];
+  cache.allMatchesRaw = allMatches || [];  // voor matchcount per seizoen
   cache.matches = (matches || []).map(m => ({
     id:    m.id,
     date:  m.date,
@@ -1394,15 +1418,58 @@ const adminTikkie = () => {
       : playerRows}`;
 };
 
-const adminSettings = () => `
-  <div class="settings-card">
-    <div class="form-group">
-      <label>Seizoen naam</label>
-      <input type="text" id="seasonInput" value="${cache.season}">
-    </div>
-    <button class="btn btn-gold" id="saveSettingsBtn" style="margin-top:8px">Instellingen opslaan</button>
+const adminSettings = () => {
+  const activeSid = S.selectedSeasonId || cache.currentSeasonId;
 
-    <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+  const seasonRows = cache.seasons.map(s => {
+    const isActive = s.id === cache.currentSeasonId;
+    const matchCount = cache.allMatchesRaw ? cache.allMatchesRaw.filter(m => m.season_id === s.id).length : '?';
+    return `<div class="season-row ${isActive ? 'season-active' : ''}">
+      <div class="season-row-info">
+        <div class="season-row-name">${s.name}${isActive ? ' <span class="season-badge">huidig</span>' : ''}</div>
+        <div class="season-row-meta">
+          <span>📅 ${s.start_date ? fmtDate(s.start_date) : '—'} → ${s.end_date ? fmtDate(s.end_date) : '—'}</span>
+          <span>· ${matchCount} wedstrijden</span>
+        </div>
+      </div>
+      <div class="season-row-actions">
+        <button class="btn btn-ghost btn-sm" data-edit-season="${s.id}">Bewerken</button>
+        ${!isActive ? `<button class="btn btn-danger btn-sm" data-delete-season="${s.id}">Verwijderen</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const editingSeason = S.editingSeason ? cache.seasons.find(s => s.id === S.editingSeason) : null;
+  const editForm = editingSeason ? `
+    <div class="settings-card" style="margin-top:14px;border:1px solid var(--gold)">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:14px">Seizoen bewerken</div>
+      <div class="form-group">
+        <label>Naam</label>
+        <input type="text" id="editSeasonName" value="${editingSeason.name}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label>Startdatum</label>
+          <input type="date" id="editSeasonStart" value="${editingSeason.start_date || ''}">
+        </div>
+        <div class="form-group">
+          <label>Einddatum</label>
+          <input type="date" id="editSeasonEnd" value="${editingSeason.end_date || ''}">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-gold" id="saveSeasonEditBtn">Opslaan</button>
+        <button class="btn btn-ghost" id="cancelSeasonEditBtn">Annuleren</button>
+      </div>
+    </div>` : '';
+
+  return `
+  <div class="settings-card">
+    <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--white);margin-bottom:16px">Seizoenen</div>
+    <div id="seasonsList">${seasonRows || '<p style="color:var(--text-soft);font-size:14px">Nog geen seizoenen. Start hieronder een nieuw seizoen.</p>'}</div>
+    ${editForm}
+
+    <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border)">
       <div style="font-family:'DM Serif Display',serif;font-size:17px;color:var(--white);margin-bottom:8px">Nieuw seizoen starten</div>
       <p style="font-size:13px;color:var(--text-soft);margin-bottom:16px;line-height:1.6">
         Alle wedstrijden en statistieken van het huidige seizoen worden bewaard.<br>
@@ -1412,9 +1479,20 @@ const adminSettings = () => `
         <label>Naam nieuw seizoen</label>
         <input type="text" id="newSeasonNameInput" placeholder="bijv. Seizoen 2025–2026">
       </div>
-      <button class="btn btn-danger" id="startNewSeasonBtn">Nieuw seizoen starten →</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label>Startdatum (optioneel)</label>
+          <input type="date" id="newSeasonStart">
+        </div>
+        <div class="form-group">
+          <label>Einddatum (optioneel)</label>
+          <input type="date" id="newSeasonEnd">
+        </div>
+      </div>
+      <button class="btn btn-gold" id="startNewSeasonBtn" style="margin-top:4px">Nieuw seizoen starten →</button>
     </div>
   </div>`;
+};
 
 // ── MODALS ────────────────────────────────────────────
 const loginModal = () => `
@@ -1536,6 +1614,14 @@ const wire = () => {
     loadAll().then(() => render());
   });
   eid('startNewSeasonBtn')?.addEventListener('click', startNewSeason);
+  eid('saveSeasonEditBtn')?.addEventListener('click', saveSeasonEdit);
+  eid('cancelSeasonEditBtn')?.addEventListener('click', () => { S.editingSeason = null; render(); });
+  document.querySelectorAll('[data-edit-season]').forEach(b =>
+    b.addEventListener('click', () => { S.editingSeason = b.dataset.editSeason; render(); })
+  );
+  document.querySelectorAll('[data-delete-season]').forEach(b =>
+    b.addEventListener('click', () => deleteSeasonConfirm(b.dataset.deleteSeason))
+  );
 
   eid('closeModalBtn')?.addEventListener('click', ()=>{ S.modal=null; S.editingMatch=null; S.editingPlayer=null; render(); });
   eid('addMatchBtn')?.addEventListener('click', ()=>{ S.modal='match'; S.editingMatch=null; render(); });
@@ -1638,13 +1724,15 @@ const saveMatch = () => {
 };
 
 const startNewSeason = async () => {
-  const name = eid('newSeasonNameInput')?.value.trim();
-  if (!name) { alert('Voer een naam in voor het nieuwe seizoen.'); return; }
+  const name  = eid('newSeasonNameInput')?.value.trim();
+  const start = eid('newSeasonStart')?.value || null;
+  const end   = eid('newSeasonEnd')?.value   || null;
+  if (!name) { notify('Voer een naam in voor het nieuwe seizoen.'); return; }
   if (!confirm(`Weet je zeker dat je een nieuw seizoen wilt starten?\n\nNaam: ${name}\n\nHet huidige seizoen blijft bewaard.`)) return;
 
   doAction(async () => {
     // Maak nieuw seizoen aan
-    const { data: newSeason, error } = await sb.from('seasons').insert({ name }).select().single();
+    const { data: newSeason, error } = await sb.from('seasons').insert({ name, start_date: start, end_date: end }).select().single();
     if (error) throw error;
     cache.currentSeasonId = newSeason.id;
     cache.seasons.unshift(newSeason);
@@ -1666,15 +1754,46 @@ const startNewSeason = async () => {
 };
 
 
-const saveSettings = () => {
-  const season = eid('seasonInput').value.trim();
-  if (!season) return;
-  cache.season = season;
+const saveSeasonEdit = () => {
+  const sid  = S.editingSeason;
+  const name  = eid('editSeasonName')?.value.trim();
+  const start = eid('editSeasonStart')?.value || null;
+  const end   = eid('editSeasonEnd')?.value   || null;
+  if (!name || !sid) return;
   doAction(async () => {
-    await dbSaveSetting('season', season);
-  }, 'Instellingen opgeslagen');
-  render();
+    const { error } = await sb.from('seasons').update({ name, start_date: start, end_date: end }).eq('id', sid);
+    if (error) throw error;
+    // Update lokale cache
+    const s = cache.seasons.find(s => s.id === sid);
+    if (s) { s.name = name; s.start_date = start; s.end_date = end; }
+    // Als dit het actieve seizoen is, update ook de display naam
+    if (sid === cache.currentSeasonId) cache.season = name;
+    S.editingSeason = null;
+  }, 'Seizoen bijgewerkt');
 };
+
+const deleteSeasonConfirm = (sid) => {
+  const s = cache.seasons.find(s => s.id === sid);
+  if (!s) return;
+  const matchCount = (cache.allMatchesRaw || []).filter(m => m.season_id === sid).length;
+  const warning = matchCount > 0 ? `\n\nLet op: dit seizoen heeft ${matchCount} wedstrijd(en). Die worden ook verwijderd!` : '';
+  if (!confirm(`Seizoen "${s.name}" verwijderen?${warning}`)) return;
+  doAction(async () => {
+    const { error } = await sb.from('seasons').delete().eq('id', sid);
+    if (error) throw error;
+    cache.seasons = cache.seasons.filter(s => s.id !== sid);
+    // Als huidig seizoen verwijderd: switch naar eerste beschikbare
+    if (cache.currentSeasonId === sid) {
+      cache.currentSeasonId = cache.seasons[0]?.id || null;
+      S.selectedSeasonId = cache.currentSeasonId;
+    }
+    await loadAll();
+    render();
+  }, 'Seizoen verwijderd');
+};
+
+// saveSettings is nu niet meer nodig maar bewaar voor compatibiliteit
+const saveSettings = () => {};
 
 const saveKosten = () => {
   const cost = parseFloat(eid('seasonCostInput').value) || 0;
