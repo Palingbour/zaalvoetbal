@@ -595,6 +595,25 @@
     .season-row { flex-direction: column; align-items: flex-start; }
     .season-row-actions { width: 100%; }
   }
+
+  /* Radio knop huidig seizoen */
+  .season-current-label {
+    display: flex; align-items: center; cursor: pointer;
+    flex-shrink: 0; padding: 4px;
+  }
+  .season-current-label input[type="radio"] { display: none; }
+  .season-radio-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border2); background: var(--navy3);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .2s, background .2s;
+    flex-shrink: 0;
+  }
+  .season-current-label input[type="radio"]:checked + .season-radio-dot {
+    border-color: var(--gold); background: var(--gold);
+    box-shadow: 0 0 0 3px #c9973a33;
+  }
+  .season-current-label:hover .season-radio-dot { border-color: var(--gold); }
 </style>
 </head>
 <body>
@@ -689,8 +708,13 @@ async function loadAll() {
 
   // Seizoenen opslaan
   cache.seasons = seasons || [];
-  // Huidig seizoen = nieuwste, of bewaar geselecteerde
-  if (!cache.currentSeasonId && cache.seasons.length) {
+  // Huidig seizoen: laad uit settings (handmatig ingesteld), anders oudste
+  const storedCurrentId = settingsMap['current_season_id'];
+  const storedSeasonExists = storedCurrentId && cache.seasons.some(s => s.id === storedCurrentId);
+  if (storedSeasonExists) {
+    cache.currentSeasonId = storedCurrentId;
+  } else if (!cache.currentSeasonId && cache.seasons.length) {
+    // Fallback: nieuwste seizoen (eerste in lijst, gesorteerd desc)
     cache.currentSeasonId = cache.seasons[0].id;
   }
   // Gebruik geselecteerd seizoen (of huidig als fallback)
@@ -1425,11 +1449,16 @@ const adminSettings = () => {
     const isActive = s.id === cache.currentSeasonId;
     const matchCount = cache.allMatchesRaw ? cache.allMatchesRaw.filter(m => m.season_id === s.id).length : '?';
     return `<div class="season-row ${isActive ? 'season-active' : ''}">
+      <label class="season-current-label" title="Aanvinken als huidig seizoen">
+        <input type="radio" name="currentSeason" class="current-season-radio"
+          data-season-id="${s.id}" ${isActive ? 'checked' : ''}>
+        <span class="season-radio-dot"></span>
+      </label>
       <div class="season-row-info">
         <div class="season-row-name">${s.name}${isActive ? ' <span class="season-badge">huidig</span>' : ''}</div>
         <div class="season-row-meta">
           <span>📅 ${s.start_date ? fmtDate(s.start_date) : '—'} → ${s.end_date ? fmtDate(s.end_date) : '—'}</span>
-          <span>· ${matchCount} wedstrijden</span>
+          <span>· ${matchCount} wedstrijd${matchCount !== 1 ? 'en' : ''}</span>
         </div>
       </div>
       <div class="season-row-actions">
@@ -1616,6 +1645,9 @@ const wire = () => {
   eid('startNewSeasonBtn')?.addEventListener('click', startNewSeason);
   eid('saveSeasonEditBtn')?.addEventListener('click', saveSeasonEdit);
   eid('cancelSeasonEditBtn')?.addEventListener('click', () => { S.editingSeason = null; render(); });
+  document.querySelectorAll('.current-season-radio').forEach(r =>
+    r.addEventListener('change', () => { if (r.checked) setCurrentSeason(r.dataset.seasonId); })
+  );
   document.querySelectorAll('[data-edit-season]').forEach(b =>
     b.addEventListener('click', () => { S.editingSeason = b.dataset.editSeason; render(); })
   );
@@ -1734,7 +1766,7 @@ const startNewSeason = async () => {
     // Maak nieuw seizoen aan
     const { data: newSeason, error } = await sb.from('seasons').insert({ name, start_date: start, end_date: end }).select().single();
     if (error) throw error;
-    cache.currentSeasonId = newSeason.id;
+    // Nieuw seizoen wordt NIET automatisch huidig — stel handmatig in via Instellingen
     cache.seasons.unshift(newSeason);
     // Reset kosten settings voor nieuw seizoen
     await dbSaveSetting('season', name);
@@ -1751,6 +1783,21 @@ const startNewSeason = async () => {
     notify(`Nieuw seizoen "${name}" gestart! 🎉`);
     render();
   }, null);
+};
+
+
+const setCurrentSeason = (sid) => {
+  if (sid === cache.currentSeasonId) return;
+  const s = cache.seasons.find(s => s.id === sid);
+  if (!s) return;
+  cache.currentSeasonId = sid;
+  // Automatisch overschakelen naar dit seizoen
+  S.selectedSeasonId = sid;
+  doAction(async () => {
+    await dbSaveSetting('current_season_id', sid);
+    await loadAll();
+    render();
+  }, `"${s.name}" is nu het huidige seizoen`);
 };
 
 
