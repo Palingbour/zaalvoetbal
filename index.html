@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zaalvoetbal (Spaargaren VS RoBo)</title>
+<title>Zaalvoetbal (beats Spaargaren)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -654,10 +654,10 @@
 // ═══════════════════════════════════════════════════════
 //  ⚙️  CONFIGURATIE — vul hier je Supabase gegevens in
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://xizyagonxftqqoimjigf.supabase.co';       // bv. https://xyzabc.supabase.co
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpenlhZ29ueGZ0cXFvaW1qaWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjkyODcsImV4cCI6MjA4ODkwNTI4N30.V1WB__YJeJ3wAX1ltlpkjSR6E8rHVyQqF1FsT6vfRsQ';  // begint met "eyJ..."
-const ADMIN_PASSWORD    = 'Vvsb264150';             // ← wijzig dit!
-// ═══════════════════════════════════════════
+const SUPABASE_URL      = 'JOUW_SUPABASE_URL';       // bv. https://xyzabc.supabase.co
+const SUPABASE_ANON_KEY = 'JOUW_SUPABASE_ANON_KEY';  // begint met "eyJ..."
+const ADMIN_PASSWORD    = 'woensdag2024';             // ← wijzig dit!
+// ═══════════════════════════════════════════════════════
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -667,7 +667,7 @@ let cache = { players: [], matches: [], season: 'Seizoen 2024–2025', pricePerS
 // ── STATE ────────────────────────────────────────────
 let S = {
   page: 'results', isAdmin: false, loginVisible: false, modal: null,
-  editingMatch: null, editingPlayer: null, statsTab: 'attendance', adminTab: 'matches', resultsTab: 'uitslagen', selectedSeasonId: null, editingSeason: null
+  editingMatch: null, editingPlayer: null, statsTab: 'stand', adminTab: 'matches', resultsTab: 'uitslagen', selectedSeasonId: null, editingSeason: null
 };
 
 // ── HELPERS ──────────────────────────────────────────
@@ -760,10 +760,11 @@ async function loadAll() {
   const activeSeason = cache.seasons.find(s => s.id === (S.selectedSeasonId || cache.currentSeasonId));
   cache.season          = activeSeason?.name || settingsMap['season'] || 'Seizoen 2024-2025';
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
-  cache.seasonCost      = parseFloat(settingsMap['season_cost'])       || 0;
-  cache.seasonPaid      = parseFloat(settingsMap['season_paid'])       || 0;
-  try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts   = []; }
-  try { cache.paymentsPaid = JSON.parse(settingsMap['payments_paid'] || '[]'); } catch(e) { cache.paymentsPaid = []; }
+  // Kosten zijn per seizoen opgeslagen: key = 'season_cost__<seasonId>'
+  const sid = cache.currentSeasonId || 'default';
+  cache.seasonCost = parseFloat(settingsMap['season_cost__' + sid] ?? settingsMap['season_cost']) || 0;
+  try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs__'   + sid] || settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts   = []; }
+  try { cache.paymentsPaid = JSON.parse(settingsMap['payments_paid__' + sid] || settingsMap['payments_paid'] || '[]'); } catch(e) { cache.paymentsPaid = []; }
   return true;
 }
 
@@ -873,9 +874,11 @@ const nb = (page, lbl) =>
 // ── RESULTS ───────────────────────────────────────────
 const pageResults = () => {
   const today = new Date(); today.setHours(0,0,0,0);
-  const played   = [...cache.matches].filter(m => new Date(m.date) < today || (m.goalsA != null && m.goalsB != null && new Date(m.date) <= today))
+  // Gespeeld = uitslag ingevuld (ongeacht datum)
+  // Programma = nog geen uitslag ingevuld
+  const played   = [...cache.matches].filter(m => m.teamA.goals != null && m.teamB.goals != null)
                     .sort((a,b) => new Date(b.date) - new Date(a.date));
-  const upcoming = [...cache.matches].filter(m => new Date(m.date) >= today && (m.goalsA == null || m.goalsB == null))
+  const upcoming = [...cache.matches].filter(m => m.teamA.goals == null || m.teamB.goals == null)
                     .sort((a,b) => new Date(a.date) - new Date(b.date));
   const tab = S.resultsTab;
   return `
@@ -2009,14 +2012,10 @@ const startNewSeason = async () => {
     cache.seasons.unshift(newSeason);
     // Reset kosten settings voor nieuw seizoen
     await dbSaveSetting('season', name);
-    await dbSaveSetting('season_cost', 0);
-    await dbSaveSetting('season_paid', 0);
-    await dbSaveSetting('extra_costs', '[]');
-    await dbSaveSetting('payments_paid', '[]');
-    cache.season = name;
-    cache.seasonCost = 0;
-    cache.seasonPaid = 0;
-    cache.extraCosts = [];
+    // Nieuwe seizoen-specifieke keys hoeven niet aangemaakt: ze staan standaard op 0/leeg
+    cache.season       = name;
+    cache.seasonCost   = 0;
+    cache.extraCosts   = [];
     cache.paymentsPaid = [];
     S.selectedSeasonId = newSeason.id;
     notify(`Nieuw seizoen "${name}" gestart! 🎉`);
@@ -2092,9 +2091,12 @@ const saveKosten = () => {
     if (inp.value.trim() || amt) extras.push({ id: Date.now()+i, description: inp.value.trim(), amount: amt });
   });
   cache.extraCosts = extras;
+  const sid = cache.currentSeasonId || 'default';
   doAction(async () => {
-    await dbSaveSetting('season_cost', cost);
-    await dbSaveSetting('extra_costs', JSON.stringify(extras));
+    await dbSaveSetting('season_cost__' + sid, cost);
+    await dbSaveSetting('extra_costs__' + sid, JSON.stringify(extras));
+    cache.seasonCost  = cost;
+    cache.extraCosts  = extras;
   }, 'Kosten opgeslagen');
 };
 
@@ -2103,8 +2105,9 @@ const togglePayment = (playerId, checked) => {
   if (checked) { if (!paid.includes(playerId)) paid.push(playerId); }
   else { paid = paid.filter(id => id !== playerId); }
   cache.paymentsPaid = paid;
+  const sid = cache.currentSeasonId || 'default';
   doAction(async () => {
-    await dbSaveSetting('payments_paid', JSON.stringify(paid));
+    await dbSaveSetting('payments_paid__' + sid, JSON.stringify(paid));
   }, checked ? 'Betaling geregistreerd ✓' : 'Betaling verwijderd');
   render();
 };
