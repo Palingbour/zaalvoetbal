@@ -702,20 +702,19 @@ const setSaving = show => {
 // ══════════════════════════════════════════════════════
 
 async function loadAll() {
+  // Core tabellen — als deze falen, toon foutmelding
   const [
     { data: players,      error: e1 },
     { data: allMatches,   error: e2 },
     { data: matchPlayers, error: e3 },
     { data: matchScorers, error: e4 },
-    { data: settings,     error: e5 },
-    { data: seasons,      error: e6 }
+    { data: settings,     error: e5 }
   ] = await Promise.all([
     sb.from('players').select('*').order('name'),
     sb.from('matches').select('*').order('date', { ascending: false }),
     sb.from('match_players').select('*'),
     sb.from('match_scorers').select('*'),
-    sb.from('settings').select('*'),
-    sb.from('seasons').select('*').order('created_at', { ascending: false })
+    sb.from('settings').select('*')
   ]);
 
   if (e1 || e2 || e3 || e4 || e5) {
@@ -723,7 +722,14 @@ async function loadAll() {
     showConfigError(err.message);
     return false;
   }
-  if (e6) console.warn('Seasons tabel niet beschikbaar:', e6.message);
+
+  // Seasons tabel — optioneel, aparte query zodat een fout de app niet blokkeert
+  let seasons = [];
+  try {
+    const { data: s, error: e6 } = await sb.from('seasons').select('*').order('created_at', { ascending: false });
+    if (!e6) seasons = s || [];
+    else console.warn('Seasons tabel niet beschikbaar:', e6.message);
+  } catch(e) { console.warn('Seasons query mislukt:', e.message); }
 
   // ── 1. Settings eerst zodat alles erna beschikbaar is ──
   const settingsMap = {};
@@ -761,7 +767,7 @@ async function loadAll() {
   cache.season          = activeSeason?.name || settingsMap['season'] || 'Seizoen 2024-2025';
   cache.pricePerSession = parseFloat(settingsMap['price_per_session']) || 5.00;
   // Kosten zijn per seizoen opgeslagen: key = 'season_cost__<seasonId>'
-  const sid = cache.currentSeasonId || 'default';
+  const sid = (S.selectedSeasonId || cache.currentSeasonId) || 'default';
   cache.seasonCost = parseFloat(settingsMap['season_cost__' + sid] ?? settingsMap['season_cost']) || 0;
   try { cache.extraCosts   = JSON.parse(settingsMap['extra_costs__'   + sid] || settingsMap['extra_costs']   || '[]'); } catch(e) { cache.extraCosts   = []; }
   try { cache.paymentsPaid = JSON.parse(settingsMap['payments_paid__' + sid] || settingsMap['payments_paid'] || '[]'); } catch(e) { cache.paymentsPaid = []; }
@@ -2091,7 +2097,10 @@ const saveKosten = () => {
     if (inp.value.trim() || amt) extras.push({ id: Date.now()+i, description: inp.value.trim(), amount: amt });
   });
   cache.extraCosts = extras;
-  const sid = cache.currentSeasonId || 'default';
+  const sid = (S.selectedSeasonId || cache.currentSeasonId) || 'default';
+  const viewedSeason = cache.seasons.find(s => s.id === sid);
+  const isCurrentSeason = sid === cache.currentSeasonId;
+  if (!isCurrentSeason && !confirm(`Je past de kosten aan van seizoen "${viewedSeason?.name || sid}", niet het huidige seizoen. Doorgaan?`)) return;
   doAction(async () => {
     await dbSaveSetting('season_cost__' + sid, cost);
     await dbSaveSetting('extra_costs__' + sid, JSON.stringify(extras));
@@ -2105,7 +2114,7 @@ const togglePayment = (playerId, checked) => {
   if (checked) { if (!paid.includes(playerId)) paid.push(playerId); }
   else { paid = paid.filter(id => id !== playerId); }
   cache.paymentsPaid = paid;
-  const sid = cache.currentSeasonId || 'default';
+  const sid = (S.selectedSeasonId || cache.currentSeasonId) || 'default';
   doAction(async () => {
     await dbSaveSetting('payments_paid__' + sid, JSON.stringify(paid));
   }, checked ? 'Betaling geregistreerd ✓' : 'Betaling verwijderd');
@@ -2128,11 +2137,18 @@ const showConfigError = msg => {
 
 // ── BOOT ─────────────────────────────────────────────
 (async () => {
-  const ok = await loadAll();
-  if (!ok) return;
-  eid('loadingScreen').style.display = 'none';
-  eid('app').style.display = 'block';
-  render();
+  try {
+    const ok = await Promise.race([
+      loadAll(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: server reageert niet (>15s). Controleer je Supabase URL en key.')), 15000))
+    ]);
+    if (!ok) return;
+    eid('loadingScreen').style.display = 'none';
+    eid('app').style.display = 'block';
+    render();
+  } catch(e) {
+    showConfigError(e.message);
+  }
 })();
 </script>
 </body>
