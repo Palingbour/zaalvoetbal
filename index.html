@@ -791,12 +791,12 @@ async function dbDeletePlayer(id) {
 async function dbSaveMatch(data, existingId = null) {
   let matchId = existingId;
   if (existingId) {
-    const { error } = await sb.from('matches').update({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB }).eq('id', existingId);
+    const { error } = await sb.from('matches').update({ date: data.date, goals_a: data.goalsA ?? null, goals_b: data.goalsB ?? null }).eq('id', existingId);
     if (error) throw error;
     await sb.from('match_players').delete().eq('match_id', existingId);
     await sb.from('match_scorers').delete().eq('match_id', existingId);
   } else {
-    const { data: row, error } = await sb.from('matches').insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB, season_id: cache.currentSeasonId }).select().single();
+    const { data: row, error } = await sb.from('matches').insert({ date: data.date, goals_a: data.goalsA ?? null, goals_b: data.goalsB ?? null, season_id: cache.currentSeasonId }).select().single();
     if (error) throw error;
     matchId = row.id;
   }
@@ -1638,7 +1638,7 @@ const doImport = async (results, preview) => {
   for (const data of results) {
     try {
       const { data: row, error } = await sb.from('matches')
-        .insert({ date: data.date, goals_a: data.goalsA, goals_b: data.goalsB, season_id: cache.currentSeasonId })
+        .insert({ date: data.date, goals_a: data.goalsA ?? null, goals_b: data.goalsB ?? null, season_id: cache.currentSeasonId })
         .select().single();
       if (error) throw error;
       const mpRows = data.playersB.map(pid => ({ match_id: row.id, player_id: pid, team: 'B' }));
@@ -1826,12 +1826,12 @@ const matchModal = () => {
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-group">
-        <label>Team Spaargaren — Doelpunten</label>
-        <input type="number" id="goalsA" min="0" value="${ed?.teamA?.goals??0}">
+        <label>Team Spaargaren — Doelpunten <span style="color:var(--text-soft);font-size:11px">(leeg = nog niet gespeeld)</span></label>
+        <input type="number" id="goalsA" min="0" placeholder="—" value="${ed?.teamA?.goals!=null?ed.teamA.goals:''}">
       </div>
       <div class="form-group">
-        <label>Team RoBo — Doelpunten</label>
-        <input type="number" id="goalsB" min="0" value="${ed?.teamB?.goals??0}">
+        <label>Team RoBo — Doelpunten <span style="color:var(--text-soft);font-size:11px">(leeg = nog niet gespeeld)</span></label>
+        <input type="number" id="goalsB" min="0" placeholder="—" value="${ed?.teamB?.goals!=null?ed.teamB.goals:''}">
       </div>
     </div>
     <div class="form-group">
@@ -1988,8 +1988,8 @@ const savePlayer = () => {
 const saveMatch = () => {
   const data = {
     date:    eid('matchDate').value,
-    goalsA:  parseInt(eid('goalsA').value)||0,
-    goalsB:  parseInt(eid('goalsB').value)||0,
+    goalsA:  eid('goalsA').value !== '' ? parseInt(eid('goalsA').value) : null,
+    goalsB:  eid('goalsB').value !== '' ? parseInt(eid('goalsB').value) : null,
     playersA: [...document.querySelectorAll('[data-team="A"].selected')].map(e=>e.dataset.pid),
     playersB: [...document.querySelectorAll('[data-team="B"].selected')].map(e=>e.dataset.pid),
     scorers:  []
