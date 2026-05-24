@@ -1,0 +1,26 @@
+name: Supabase Keep-Alive Zaalvoetbal
+
+on:
+  schedule:
+    - cron: '0 9 */3 * *'   # elke 3 dagen om 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update keep-alive timestamp
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            -X PATCH "${{ secrets.SUPABASE_URL }}/rest/v1/settings?key=eq.last_keepalive_ping" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{\"value\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}")
+          echo "HTTP status: $status"
+          if [ "$status" -ge 400 ]; then
+            cat response.json
+            exit 1
+          fi
+          echo "Keep-alive succesvol om $(date -u +%Y-%m-%dT%H:%M:%SZ)"
